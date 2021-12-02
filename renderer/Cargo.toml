@@ -1,0 +1,21 @@
+[package]
+name = "renderer"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tokio = { version = "1", features = ["default", "rt", "fs", "time"]}
+async-trait = "0.1"
+chrono = "0.4"
+serde = { version = "1", features = ["default", "serde_derive"]}
+chashmap = "2"
+image = "0.23"
+rusttype = "0.9"
+rand = "0.8"
+css-color-parser = "0.1"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full"]}
+serde_json = "1"

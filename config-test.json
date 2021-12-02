@@ -1,0 +1,52 @@
+[
+    {
+        "type": "Solid",
+        "x": 0,
+        "y": 0,
+        "width": 32,
+        "height": 32,
+        "color": "rgba(255,0,0,0.5)"
+    },
+    {
+        "type": "Solid",
+        "x": 32,
+        "y": 0,
+        "width": 32,
+        "height": 32,
+        "color": "rgba(0,255,0,0.5)"
+    },
+    {
+        "type": "Solid",
+        "x": 0,
+        "y": 32,
+        "width": 32,
+        "height": 32,
+        "color": "rgba(0,0,255, 0.5)"
+    },
+    {
+        "type": "Solid",
+        "x": 32,
+        "y": 32,
+        "width": 32,
+        "height": 32,
+        "color": "rgba(160,160,0,0.5)"
+    },
+    {
+        "type": "Clock",
+        "x": 10,
+        "y": 0,
+        "width": 64,
+        "height": 32,
+        "text_color": "rgba(0,0,255, 0.5)",
+        "background_color": "rgba(0,0,0,0)"
+    },
+    {
+        "type": "MatrixRain",
+        "x": 0,
+        "y": 0,
+        "width": 64,
+        "height": 64,
+        "speed": 100,
+        "color": "rgba(0,255,0, 0.5)"
+    }
+]

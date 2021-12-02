@@ -1,0 +1,19 @@
+[package]
+name = "neoclock"
+version = "0.1.0"
+authors = ["Chen Xu <windoze@0d0a.com>"]
+edition = "2021"
+
+[workspace]
+members = [
+    "renderer"
+]
+
+[dependencies]
+anyhow = "1"
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["default", "serde_derive"]}
+serde_json = "1"
+clap = "2"
+rpi-led-matrix = "0.2"
+renderer = { path = "renderer" }

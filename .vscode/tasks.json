@@ -1,0 +1,40 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "cargo",
+			"command": "build",
+			"args": [
+				"--target=armv7-unknown-linux-gnueabihf"
+			],
+			"problemMatcher": [
+				"$rustc"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"label": "rust: cargo build"
+		},
+		{
+			"label": "Deploy to pz2",
+			"type": "shell",
+			"command": "ssh pz2 killall gdbserver; scp -C ${workspaceFolder}/target/armv7-unknown-linux-gnueabihf/debug/neoclock pz2:~/tmp",
+			"group": "build",
+			"dependsOrder": "sequence",
+			"dependsOn": "rust: cargo build",
+			"presentation": {
+				"reveal": "silent",
+				"panel": "shared"
+			}
+		},
+		{
+			"label": "Start GDB server",
+			"type": "shell",
+			"command": "ssh pz2 screen -dmS neopixel  gdbserver '*:7777'  /home/pi/tmp/neoclock",
+			"problemMatcher": [],
+			"dependsOrder": "sequence",
+			"dependsOn": "Deploy to pz2"
+		}
+	]
+}
