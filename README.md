@@ -9,4 +9,4 @@ TODO:
 * Configurable LED panel size.
 * More widgets.
 * Full font support for clock and calendar widgets.
-* Any many other things.
+* And many other things.
