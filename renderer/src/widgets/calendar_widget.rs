@@ -1,11 +1,12 @@
 use crate::{deserialize_pixel, Part, PartImage, PartPixel, PartCache};
 use async_trait::async_trait;
-use chrono::{Utc, DateTime, Datelike, NaiveDate};
+use chrono::{Utc, DateTime, Datelike, NaiveDate, Duration};
 use image::Rgba;
 use rusttype::{Font, Scale};
 use serde::Deserialize;
 
 #[derive(Clone, Debug, Deserialize)]
+#[serde(default)]
 pub struct CalendarWidget {
     pub width: u32,
     pub height: u32,
@@ -25,7 +26,7 @@ impl CalendarWidget {
         // TODO: Is there any better way to do that?
         let now = Utc::now();
         let n = NaiveDate::from_ymd(now.year(), now.month(), now.day()).and_hms(0, 0, 1);
-        let nt: DateTime<Utc> = DateTime::from_utc(n, Utc);
+        let nt: DateTime<Utc> = DateTime::from_utc(n, Utc).checked_add_signed(Duration::from_std(std::time::Duration::from_secs(86400)).unwrap()).unwrap();
         let d = nt - now;
         tokio::time::sleep(d.to_std().unwrap()).await;
     }
@@ -47,7 +48,7 @@ impl Default for CalendarWidget {
 #[async_trait]
 impl Part for CalendarWidget {
     async fn start(&mut self, cache: PartCache, id: usize) {
-        self.font_data = tokio::fs::read(&self.font_path).await.unwrap();
+        // self.font_data = tokio::fs::read(&self.font_path).await.unwrap();
         let font = Font::try_from_vec(self.font_data.clone()).unwrap();
         let height: f32 = 12.4; // to get 80 chars across (fits most terminals); adjust as desired
         let pixel_height = height.ceil() as usize;

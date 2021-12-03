@@ -1,8 +1,6 @@
-use std::time::SystemTime;
-
-use crate::{deserialize_pixel, PartImage, PartPixel, PeriodicallyRefreshedPart, PartCache};
+use crate::{deserialize_pixel, PartImage, PartPixel, PartCache};
 use async_trait::async_trait;
-use chrono::{Utc, Timelike, NaiveDateTime, DateTime};
+use chrono::{Utc, NaiveDateTime, DateTime};
 use image::Rgba;
 use rusttype::{Font, Scale};
 use serde::Deserialize;

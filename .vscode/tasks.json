@@ -14,6 +14,10 @@
 				"kind": "build",
 				"isDefault": true
 			},
+			"env": {
+				"CC": "armv7-unknown-linux-gnueabihf-gcc",
+				"CXX": "armv7-unknown-linux-gnueabihf-g++"
+			},
 			"label": "rust: cargo build"
 		},
 		{
