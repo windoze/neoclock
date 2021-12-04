@@ -12,7 +12,7 @@ pub struct SolidWidget {
 
 #[async_trait]
 impl Part for SolidWidget {
-    async fn start(&mut self, cache: PartCache, id: usize) {
+    async fn start(&mut self, cache: PartCache, id: usize) -> Result<(), crate::RenderError> {
         let mut img = PartImage::new(self.width, self.height);
 
         for p in img.pixels_mut() {
@@ -20,7 +20,8 @@ impl Part for SolidWidget {
         }
         if let Ok(mut write_guard) = cache.write() {
             (*write_guard)[id] = img;
-        }    
+        }
+        Ok(())
     }
 }
 

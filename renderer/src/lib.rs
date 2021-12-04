@@ -6,53 +6,43 @@ pub type PartImage = ImageBuffer<PartPixel, Vec<u8>>;
 pub type ScreenPixel = image::Rgb<u8>;
 pub type ScreenImage = ImageBuffer<ScreenPixel, Vec<u8>>;
 
-use std::{sync::{RwLock, Arc}, time::Duration};
+use std::{sync::{RwLock, Arc}};
 use async_trait::async_trait;
 use image::{ImageBuffer, buffer::ConvertBuffer, Pixel};
 use serde::{Deserializer, Deserialize, de::Error};
+use thiserror::Error;
+use tokio::task::JoinHandle;
+
+#[derive(Error, Debug)]
+pub enum RenderError {
+    #[error("Initialization Error {0}")]
+    InitializationError(String),
+
+    #[error("File at '{0}' is not a valid font.")]
+    FontError(String),
+
+    #[error(transparent)]
+    ReqwestError(#[from] reqwest::Error),
+
+    #[error(transparent)]
+    ImageError(#[from] image::ImageError),
+
+    #[error(transparent)]
+    SystemTimeError(#[from] std::time::SystemTimeError),
+
+    #[error(transparent)]
+    IoError(#[from] std::io::Error),
+}
 
 pub trait Drawable {
     fn set_pixel(&mut self, x: u32, y: u32, r: u8, g: u8, b: u8);
-}
-
-impl Drawable for ScreenImage {
-    fn set_pixel(&mut self, x: u32, y: u32, r: u8, g: u8, b: u8) {
-        self.put_pixel(x, y, image::Rgb::<u8>([r, g, b]));
-    }
 }
 
 type PartCache = Arc<RwLock<Vec<PartImage>>>;
 
 #[async_trait]
 trait Part {
-    async fn start(&mut self, cache: PartCache, id: usize);
-}
-
-#[async_trait]
-trait PeriodicallyRefreshedPart {
-    fn get_interval(&self) -> Duration {
-        Duration::from_millis(100) 
-    }
-
-    async fn init(&mut self, _id: usize) {}
-    
-    fn draw(&self) -> PartImage;
-}
-
-#[async_trait]
-impl<T> Part for T
-    where T: PeriodicallyRefreshedPart + Send + Sync
-{
-    async fn start(&mut self, cache: PartCache, id: usize) {
-        self.init(id).await;
-        loop {
-            let image = self.draw();
-            if let Ok(mut write_guard) = cache.write() {
-                (*write_guard)[id] = image;
-            }
-            tokio::time::sleep(self.get_interval()).await;
-        }
-    }
+    async fn start(&mut self, cache: PartCache, id: usize) -> Result<(), RenderError>;
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -68,30 +58,40 @@ pub struct Screen {
     height: u32,
     positions: Vec<(u32, u32)>,
     part_contents: PartCache,
+    children: Vec<JoinHandle<Result<(), RenderError>>>,
 }
 
 impl Screen {
     pub fn new(width: u32, height: u32, parts: Vec<WidgetConf>) -> Self {
         let mut v = Vec::with_capacity(parts.len());
         v.resize(parts.len(), Default::default());
-        let r = Self {
-            width,
-            height,
-            positions: parts.iter().map(|p| { (p.x, p.y) }).collect(),
-            part_contents: Arc::new(RwLock::new(v)),
-        };
-
+        let positions:Vec<(u32, u32)> = parts.iter().map(|p| { (p.x, p.y) }).collect();
+        let part_contents: PartCache = Arc::new(RwLock::new(v));
+        let mut children: Vec<JoinHandle<Result<(), RenderError>>> = Vec::with_capacity(parts.len());
         for (idx, mut part) in parts.into_iter().enumerate() {
-            let cache = r.part_contents.clone();
-            tokio::spawn(async move {
-                part.widget.start(cache, idx).await;
-            });
+            let cache = part_contents.clone();
+            children.push(tokio::spawn(async move {
+                part.widget.start(cache, idx).await
+            }));
         }
 
-        r
+        Self {
+            width,
+            height,
+            positions,
+            part_contents,
+            children,
+        }
     }
 
-    pub fn render(&self) -> ScreenImage {
+    pub async fn stop(&mut self) {
+        for c in self.children.iter_mut () {
+            c.abort();
+            c.await.unwrap().unwrap();
+        }
+    }
+
+    fn render(&self) -> ScreenImage {
         let mut screen = PartImage::new(self.width, self.height);
         for px in screen.pixels_mut() {
             (*px) = image::Rgba::<u8>([0,0,0,255]);
@@ -138,8 +138,11 @@ fn deserialize_pixel<'de, D>(deserializer: D) -> Result<PartPixel, D::Error>
 
 #[cfg(test)]
 mod tests {
+    use std::time::Duration;
+
     use image::{Rgb, Rgba};
     use serde::Deserialize;
+
     use super::*;
 
     #[test]
@@ -231,15 +234,6 @@ mod tests {
                 "height": 32,
                 "text_color": "rgba(0,0,255, 0.5)",
                 "background_color": "rgba(0,0,0,0)"
-            },
-            {
-                "type": "MatrixRain",
-                "x": 0, 
-                "y": 0,
-                "width": 64,
-                "height": 64,
-                "speed": 100,
-                "color": "rgba(0,255,0, 0.5)"
             }
         ]"#).unwrap();
         let s = Screen::new(64, 64, parts);

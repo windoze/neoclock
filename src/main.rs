@@ -1,5 +1,6 @@
 use anyhow::Result;
 use clap::{App, Arg, value_t};
+use log::info;
 use rpi_led_matrix::{LedCanvas, LedColor, LedMatrix, LedMatrixOptions};
 use std::{fs::File, io::BufReader, time::Duration};
 
@@ -21,6 +22,8 @@ extern "C" {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    pretty_env_logger::init();
+
     let matches = App::new("neoclock")
         .version("1.0")
         .author("Chen Xu <windoze@0d0a.com>")
@@ -45,7 +48,7 @@ async fn main() -> Result<()> {
         .get_matches();
     let config = matches.value_of("config").unwrap_or("config.json");
     let fps = value_t!(matches.value_of("refresh-rate"), u64)?;
-    println!("Value for config: {}", config);
+    info!("Using config file at '{}'.", config);
     let file = File::open(config)?;
     let reader = BufReader::new(file);
     let parts: Vec<WidgetConf> = serde_json::from_reader(reader)?;
@@ -60,6 +63,7 @@ async fn main() -> Result<()> {
     options.set_rows(64);
     options.set_refresh_rate(false);
     let matrix = LedMatrix::new(Some(options), None).unwrap();
+    
     let screen = Screen::new(64, 64, parts);
     let mut canvas = Canvas(matrix.offscreen_canvas());
     loop {

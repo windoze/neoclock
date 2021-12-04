@@ -7,8 +7,9 @@ mod gif_widget;
 
 use async_trait::async_trait;
 use serde::Deserialize;
-use crate::{Part, PartCache};
+use crate::{Part, PartCache, RenderError};
 
+pub use font::draw_text;
 pub use solid_widget::SolidWidget;
 pub use clock_widget::ClockWidget;
 pub use calendar_widget::CalendarWidget;
@@ -27,7 +28,7 @@ pub enum Widget {
 
 #[async_trait]
 impl Part for Widget {
-    async fn start(&mut self, cache: PartCache, id: usize) {
+    async fn start(&mut self, cache: PartCache, id: usize) -> Result<(), RenderError> {
         match self {
             Self::Solid(s) => s.start(cache, id).await,
             Self::Clock(s) => s.start(cache, id).await,
