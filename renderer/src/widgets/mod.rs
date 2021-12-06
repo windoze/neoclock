@@ -11,7 +11,7 @@ use async_trait::async_trait;
 use serde::Deserialize;
 use crate::{Part, PartCache, RenderError};
 
-pub use font::draw_text;
+pub use font::{Font, FontConfig};
 pub use solid_widget::SolidWidget;
 pub use clock_widget::ClockWidget;
 pub use calendar_widget::CalendarWidget;

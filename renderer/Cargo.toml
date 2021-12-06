@@ -16,6 +16,7 @@ serde = { version = "1", features = ["default", "serde_derive"]}
 chashmap = "2"
 image = "0.23"
 rusttype = "0.9"
+bdf = "0.6"
 rand = "0.8"
 css-color-parser = "0.1"
 reqwest = { version = "0.11", features = ["native-tls-vendored"]}

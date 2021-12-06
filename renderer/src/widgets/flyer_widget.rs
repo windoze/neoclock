@@ -2,12 +2,10 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use image::Rgba;
-use log::info;
-use rusttype::Font;
 use serde::Deserialize;
 
 use crate::{deserialize_pixel, Part, PartCache, RenderError, PartPixel, Scrollable};
-use super::draw_text;
+use super::FontConfig;
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(default)]
@@ -20,10 +18,8 @@ pub struct FlyerWidget {
     pub text_color: PartPixel,
     #[serde(deserialize_with = "deserialize_pixel")]
     pub background_color: PartPixel,
-    pub font_path: String,
-    pub font_height: f32,
-    pub font_scale_x: f32,
-    pub font_scale_y: f32,
+    #[serde(flatten)]
+    pub font_config: FontConfig,
     pub speed: u32,
 }
 
@@ -35,10 +31,7 @@ impl Default for FlyerWidget {
             text: Default::default(),
             text_color: Rgba::<u8>([255, 255, 0, 255]),
             background_color: Rgba::<u8>([0; 4]),
-            font_path: Default::default(),
-            font_height: 12.4,
-            font_scale_x: 1.0,
-            font_scale_y: 1.0,
+            font_config: Default::default(),
             speed: 100,
         }
     }
@@ -46,18 +39,10 @@ impl Default for FlyerWidget {
 
 #[async_trait]
 impl Part for FlyerWidget {
-    async fn start(&mut self, cache: PartCache, id: usize) -> Result<(), crate::RenderError> {
-        let font_data = if self.font_path.is_empty() {
-            info!("FlyerWidget({}) - Using default font.", id);
-            Vec::from(super::font::DEF_FONT)
-        } else {
-            info!("FlyerWidget({}) - Using font at {}.", id, self.font_path);
-            tokio::fs::read(&self.font_path).await?
-        };
-        let font =
-            Font::try_from_vec(font_data).ok_or(RenderError::FontError(self.font_path.clone()))?;
+    async fn start(&mut self, cache: PartCache, id: usize) -> Result<(), RenderError> {
+        let font = self.font_config.load()?;
 
-        let text_img = draw_text(&self.text, self.text_color, &font, self.font_height, self.font_scale_x, self.font_scale_y);
+        let text_img = font.draw_text(&self.text, self.text_color);
         let mut f = text_img.scroll(self.width, self.height, -1, 0);
         loop {
             if let Ok(mut write_guard) = cache.write() {
