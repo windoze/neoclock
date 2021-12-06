@@ -49,21 +49,21 @@ pub enum Font {
     },
     BDF {
         font: bdf::Font,
-        scale_x: f32,
-        scale_y: f32,
+        scale_x: u32,
+        scale_y: u32,
     },
 }
 
 impl Font {
     fn load(path: &str, height: f32, scale_x: f32, scale_y: f32) -> Result<Self, RenderError> {
-        if path.to_lowercase().ends_with(".bdf") {
-            Ok(Self::BDF {
+        Ok(if path.to_lowercase().ends_with(".bdf") {
+            Self::BDF {
                 font: bdf::open(path).map_err(|_| RenderError::FontError(path.to_owned()))?,
-                scale_x,
-                scale_y,
-            })
+                scale_x: scale_x as u32,
+                scale_y: scale_y as u32,
+            }
         } else {
-            Ok(Self::TTF {
+            Self::TTF {
                 font: {
                     let font_data = if path.is_empty() {
                         Vec::from(super::font::DEF_FONT)
@@ -76,8 +76,8 @@ impl Font {
                 height,
                 scale_x,
                 scale_y,
-            })
-        }
+            }
+        })
     }
 
     pub fn draw_text(&self, text: &str, color: PartPixel) -> PartImage {
@@ -103,14 +103,14 @@ impl Font {
                 text,
                 color,
                 font,
-                scale_x.to_owned() as u32,
-                scale_y.to_owned() as u32,
+                scale_x.to_owned(),
+                scale_y.to_owned(),
             ),
         }
     }
 }
 
-pub fn draw_ttf_text(
+fn draw_ttf_text(
     text: &str,
     color: PartPixel,
     font: &rusttype::Font,
@@ -158,7 +158,7 @@ pub fn draw_ttf_text(
     img
 }
 
-pub fn draw_bdf_text(
+fn draw_bdf_text(
     text: &str,
     color: PartPixel,
     font: &bdf::Font,
@@ -183,10 +183,12 @@ pub fn draw_bdf_text(
         let glyph: &Glyph = if font.glyphs().contains_key(&c) {
             &font.glyphs()[&c]
         } else {
+            // Use ' ' if the char is not included in the font
             &font.glyphs()[&' ']
         };
         for ((x, y), p) in glyph.pixels() {
             if p {
+                // Scale pixel by scale_x and scale_y
                 for s_x in 0..scale_x {
                     for s_y in 0..scale_y {
                         image.put_pixel((x + offset_x) * scale_x + s_x, y * scale_y + s_y, color);

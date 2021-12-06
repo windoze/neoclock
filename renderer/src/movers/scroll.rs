@@ -1,4 +1,4 @@
-use std::marker::{PhantomData};
+use std::marker::PhantomData;
 
 use image::{GenericImageView, Pixel, ImageBuffer, GenericImage};
 
@@ -131,7 +131,7 @@ impl Scrollable<PartPixel> for PartImage {
         delta_x: i32,
         delta_y: i32,
     ) -> ScrollIterator<PartPixel> {
-        ScrollIterator::new(self.clone(), target_width, target_height, delta_x, delta_y)
+        ScrollIterator::new(self.view(0, 0, self.width(), self.height()), target_width, target_height, delta_x, delta_y)
     }
 }
 
