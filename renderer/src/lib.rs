@@ -1,5 +1,7 @@
 mod widgets;
+mod movers;
 
+pub use movers::{Scrollable, ScrollIterator};
 pub use widgets::Widget;
 pub type PartPixel = image::Rgba<u8>;
 pub type PartImage = ImageBuffer<PartPixel, Vec<u8>>;

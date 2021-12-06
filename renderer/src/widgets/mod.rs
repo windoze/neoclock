@@ -4,6 +4,8 @@ mod clock_widget;
 mod calendar_widget;
 mod matrix_rain_widget;
 mod gif_widget;
+mod flyer_widget;
+mod wigwag_widget;
 
 use async_trait::async_trait;
 use serde::Deserialize;
@@ -15,6 +17,8 @@ pub use clock_widget::ClockWidget;
 pub use calendar_widget::CalendarWidget;
 pub use matrix_rain_widget::MatrixRainWidget;
 pub use gif_widget::GifWidget;
+pub use flyer_widget::FlyerWidget;
+pub use wigwag_widget::WigwagWidget;
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(tag = "type")]
@@ -23,7 +27,9 @@ pub enum Widget {
     Clock(ClockWidget),
     Calendar(CalendarWidget),
     MatrixRain(MatrixRainWidget),
-    Gif(GifWidget)
+    Gif(GifWidget),
+    Flyer(FlyerWidget),
+    Wigwag(WigwagWidget),
 }
 
 #[async_trait]
@@ -35,6 +41,8 @@ impl Part for Widget {
             Self::Calendar(s) => s.start(cache, id).await,
             Self::MatrixRain(s) => s.start(cache, id).await,
             Self::Gif(s) => s.start(cache, id).await,
+            Self::Flyer(s) => s.start(cache, id).await,
+            Self::Wigwag(s) => s.start(cache, id).await,
         }
     }
 }
