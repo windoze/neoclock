@@ -20,7 +20,12 @@ pub struct FontConfig {
 
 impl FontConfig {
     pub fn load(&self) -> Result<Font, RenderError> {
-        Font::load(&self.font_path, self.font_height, self.font_scale_x, self.font_scale_y)
+        Font::load(
+            &self.font_path,
+            self.font_height,
+            self.font_scale_x,
+            self.font_scale_y,
+        )
     }
 }
 
@@ -30,7 +35,7 @@ impl Default for FontConfig {
             font_path: Default::default(),
             font_height: 12.4,
             font_scale_x: 1.0,
-            font_scale_y: 1.0
+            font_scale_y: 1.0,
         }
     }
 }
@@ -42,13 +47,21 @@ pub enum Font {
         scale_x: f32,
         scale_y: f32,
     },
-    BDF(bdf::Font),
+    BDF {
+        font: bdf::Font,
+        scale_x: f32,
+        scale_y: f32,
+    },
 }
 
 impl Font {
     fn load(path: &str, height: f32, scale_x: f32, scale_y: f32) -> Result<Self, RenderError> {
         if path.to_lowercase().ends_with(".bdf") {
-            Ok(Self::BDF(bdf::open(path).map_err(|_| RenderError::FontError(path.to_owned()))?))
+            Ok(Self::BDF {
+                font: bdf::open(path).map_err(|_| RenderError::FontError(path.to_owned()))?,
+                scale_x,
+                scale_y,
+            })
         } else {
             Ok(Self::TTF {
                 font: {
@@ -57,7 +70,8 @@ impl Font {
                     } else {
                         std::fs::read(path)?
                     };
-                    rusttype::Font::try_from_vec(font_data).ok_or(RenderError::FontError(path.to_owned()))?
+                    rusttype::Font::try_from_vec(font_data)
+                        .ok_or(RenderError::FontError(path.to_owned()))?
                 },
                 height,
                 scale_x,
@@ -81,9 +95,19 @@ impl Font {
                 scale_x.to_owned(),
                 scale_y.to_owned(),
             ),
-            Font::BDF(font) => draw_bdf_text(text, color, font),
+            Font::BDF {
+                font,
+                scale_x,
+                scale_y,
+            } => draw_bdf_text(
+                text,
+                color,
+                font,
+                scale_x.to_owned() as u32,
+                scale_y.to_owned() as u32,
+            ),
         }
-    }    
+    }
 }
 
 pub fn draw_ttf_text(
@@ -134,7 +158,13 @@ pub fn draw_ttf_text(
     img
 }
 
-pub fn draw_bdf_text(text: &str, color: PartPixel, font: &bdf::Font) -> PartImage {
+pub fn draw_bdf_text(
+    text: &str,
+    color: PartPixel,
+    font: &bdf::Font,
+    scale_x: u32,
+    scale_y: u32,
+) -> PartImage {
     let mut width = 0u32;
     let mut height = 0u32;
 
@@ -148,7 +178,7 @@ pub fn draw_bdf_text(text: &str, color: PartPixel, font: &bdf::Font) -> PartImag
         height = max(height, bounding_box.height);
     }
     let mut offset_x = 0u32;
-    let mut image = ImageBuffer::<PartPixel, Vec<u8>>::new(width, height);
+    let mut image = ImageBuffer::<PartPixel, Vec<u8>>::new(width * scale_x, height * scale_y);
     for c in text.chars() {
         let glyph: &Glyph = if font.glyphs().contains_key(&c) {
             &font.glyphs()[&c]
@@ -157,7 +187,11 @@ pub fn draw_bdf_text(text: &str, color: PartPixel, font: &bdf::Font) -> PartImag
         };
         for ((x, y), p) in glyph.pixels() {
             if p {
-                image.put_pixel(x + offset_x, y, color);
+                for s_x in 0..scale_x {
+                    for s_y in 0..scale_y {
+                        image.put_pixel((x + offset_x) * scale_x + s_x, y * scale_y + s_y, color);
+                    }
+                }
             }
         }
         offset_x += glyph.bounds().width;
