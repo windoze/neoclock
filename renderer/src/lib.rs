@@ -203,7 +203,7 @@ mod tests {
                 assert_eq!(c.background_color.0[2], 80);
                 assert_eq!(c.background_color.0[3], 255);
             }
-            _ => assert!(false),
+            _ => panic!(),
         }
     }
 
