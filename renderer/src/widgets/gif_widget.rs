@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use image::AnimationDecoder;
-use log::{info, debug};
+use log::{debug, info};
 use serde::Deserialize;
 
 use crate::{Part, PartCache};
@@ -17,10 +17,16 @@ pub struct GifWidget {
 impl Part for GifWidget {
     async fn start(&mut self, cache: PartCache, id: usize) -> Result<(), crate::RenderError> {
         info!("GifWidget({}) - Loading GIF from '{}'...", id, self.url);
-        let bytes = reqwest::Client::default().get(&self.url)
-            .send().await?.bytes().await?;
+        let bytes = reqwest::Client::default()
+            .get(&self.url)
+            .send()
+            .await?
+            .bytes()
+            .await?;
 
-        let frames = image::codecs::gif::GifDecoder::new(bytes.as_ref())?.into_frames().collect_frames()?;
+        let frames = image::codecs::gif::GifDecoder::new(bytes.as_ref())?
+            .into_frames()
+            .collect_frames()?;
         debug!("GifWidget({}) - Frame count: {}", id, frames.len());
 
         let mut i = 0;

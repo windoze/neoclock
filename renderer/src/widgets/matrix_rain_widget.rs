@@ -37,9 +37,7 @@ impl Part for MatrixRainWidget {
         let mut lines: Vec<(u32, u32)> = Vec::new();
         let mut last_in: u32 = 0;
         let mut rng = rand::rngs::StdRng::seed_from_u64(
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)?
-                .as_millis() as u64,
+            SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis() as u64,
         );
         loop {
             let mut img = PartImage::new(self.width, self.height);
@@ -66,13 +64,13 @@ impl Part for MatrixRainWidget {
                         (*px) = color;
                     }
                 }
-                l.1 = l.1 + 1;
+                l.1 += 1;
                 if l.1 > self.steps + self.height {
                     lines.remove(n);
                 }
             }
 
-            last_in = last_in - 1;
+            last_in -= 1;
             if let Ok(mut write_guard) = cache.write() {
                 (*write_guard)[id] = img;
             }

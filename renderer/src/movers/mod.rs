@@ -12,9 +12,8 @@ pub fn blit<Src, P, Container>(
     dest: &mut ImageBuffer<P, Container>,
     dest_x: i32,
     dest_y: i32,
-)
-where
-    Src: GenericImageView<Pixel=P>,
+) where
+    Src: GenericImageView<Pixel = P>,
     P: Pixel + 'static,
     P::Subpixel: 'static,
     Container: Deref<Target = [P::Subpixel]> + DerefMut,

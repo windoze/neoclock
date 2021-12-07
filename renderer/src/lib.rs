@@ -1,17 +1,17 @@
-mod widgets;
 mod movers;
+mod widgets;
 
-pub use movers::{Scrollable, ScrollIterator};
+pub use movers::{ScrollIterator, Scrollable};
 pub use widgets::Widget;
 pub type PartPixel = image::Rgba<u8>;
 pub type PartImage = ImageBuffer<PartPixel, Vec<u8>>;
 pub type ScreenPixel = image::Rgb<u8>;
 pub type ScreenImage = ImageBuffer<ScreenPixel, Vec<u8>>;
 
-use std::{sync::{RwLock, Arc}};
 use async_trait::async_trait;
-use image::{ImageBuffer, buffer::ConvertBuffer, Pixel};
-use serde::{Deserializer, Deserialize, de::Error};
+use image::{buffer::ConvertBuffer, ImageBuffer, Pixel};
+use serde::{de::Error, Deserialize, Deserializer};
+use std::sync::{Arc, RwLock};
 use thiserror::Error;
 use tokio::task::JoinHandle;
 
@@ -67,14 +67,15 @@ impl Screen {
     pub fn new(width: u32, height: u32, parts: Vec<WidgetConf>) -> Self {
         let mut v = Vec::with_capacity(parts.len());
         v.resize(parts.len(), Default::default());
-        let positions:Vec<(u32, u32)> = parts.iter().map(|p| { (p.x, p.y) }).collect();
+        let positions: Vec<(u32, u32)> = parts.iter().map(|p| (p.x, p.y)).collect();
         let part_contents: PartCache = Arc::new(RwLock::new(v));
-        let mut children: Vec<JoinHandle<Result<(), RenderError>>> = Vec::with_capacity(parts.len());
+        let mut children: Vec<JoinHandle<Result<(), RenderError>>> =
+            Vec::with_capacity(parts.len());
         for (idx, mut part) in parts.into_iter().enumerate() {
             let cache = part_contents.clone();
-            children.push(tokio::spawn(async move {
-                part.widget.start(cache, idx).await
-            }));
+            children.push(tokio::spawn(
+                async move { part.widget.start(cache, idx).await },
+            ));
         }
 
         Self {
@@ -87,7 +88,7 @@ impl Screen {
     }
 
     pub async fn stop(&mut self) {
-        for c in self.children.iter_mut () {
+        for c in self.children.iter_mut() {
             c.abort();
             c.await.unwrap().unwrap();
         }
@@ -96,7 +97,7 @@ impl Screen {
     fn render(&self) -> ScreenImage {
         let mut screen = PartImage::new(self.width, self.height);
         for px in screen.pixels_mut() {
-            (*px) = image::Rgba::<u8>([0,0,0,255]);
+            (*px) = image::Rgba::<u8>([0, 0, 0, 255]);
         }
         // Blend every part image into `screen`
         if let Ok(read_guard) = self.part_contents.read() {
@@ -106,7 +107,9 @@ impl Screen {
                 for px in 0..img.width() {
                     for py in 0..img.height() {
                         if (px + x) < self.width && (py + y) < self.height {
-                            screen.get_pixel_mut(px + x, py + y).blend(img.get_pixel(px, py))
+                            screen
+                                .get_pixel_mut(px + x, py + y)
+                                .blend(img.get_pixel(px, py))
                         }
                     }
                 }
@@ -116,7 +119,8 @@ impl Screen {
     }
 
     pub fn render_to<T>(&self, target: &mut T)
-        where T: Drawable
+    where
+        T: Drawable,
     {
         let image = self.render();
         for x in 0..image.width() {
@@ -129,13 +133,19 @@ impl Screen {
 }
 
 fn deserialize_pixel<'de, D>(deserializer: D) -> Result<PartPixel, D::Error>
-    where D: Deserializer<'de>
+where
+    D: Deserializer<'de>,
 {
     let buf = String::deserialize(deserializer)?;
-    let color = buf.parse::<css_color_parser::Color>().map_err(|e| {
-        D::Error::custom(e.to_string())
-    })?;
-    Ok(image::Rgba::<u8>([color.r as u8, color.g as u8, color.b as u8, (color.a * 255f32) as u8]))
+    let color = buf
+        .parse::<css_color_parser::Color>()
+        .map_err(|e| D::Error::custom(e.to_string()))?;
+    Ok(image::Rgba::<u8>([
+        color.r as u8,
+        color.g as u8,
+        color.b as u8,
+        (color.a * 255f32) as u8,
+    ]))
 }
 
 #[cfg(test)]
@@ -192,18 +202,19 @@ mod tests {
                 assert_eq!(c.background_color.0[1], 70);
                 assert_eq!(c.background_color.0[2], 80);
                 assert_eq!(c.background_color.0[3], 255);
-            },
+            }
             _ => assert!(false),
         }
     }
 
     #[tokio::test]
     async fn test_image() {
-        let mut p1 = Rgba::<u8>([255, 0,0,255]);
-        let p2 = Rgba::<u8>([0,0,255, 1]);
+        let mut p1 = Rgba::<u8>([255, 0, 0, 255]);
+        let p2 = Rgba::<u8>([0, 0, 255, 1]);
         p1.blend(&p2);
         println!("{:#?}", p1);
-        let parts: Vec<WidgetConf> = serde_json::from_str(r#"[
+        let parts: Vec<WidgetConf> = serde_json::from_str(
+            r#"[
             {
                 "type": "Solid",
                 "x": 0, 
@@ -237,19 +248,22 @@ mod tests {
                 "text_color": "rgba(0,0,255, 0.5)",
                 "background_color": "rgba(0,0,0,0)"
             }
-        ]"#).unwrap();
+        ]"#,
+        )
+        .unwrap();
         let s = Screen::new(64, 64, parts);
         for n in 0..5 {
             tokio::time::sleep(Duration::from_secs(1)).await;
             let img = s.render();
-            img.save_with_format(format!("/tmp/b-{}.png", n), image::ImageFormat::Png).unwrap();
+            img.save_with_format(format!("/tmp/b-{}.png", n), image::ImageFormat::Png)
+                .unwrap();
         }
         let img = s.render();
-        assert_eq!(img.get_pixel(0, 0), &Rgb::<u8>([255,0,0]));
-        assert_eq!(img.get_pixel(31, 31), &Rgb::<u8>([255,0,0]));
-        assert_eq!(img.get_pixel(32, 31), &Rgb::<u8>([0,127,0]));
-        assert_eq!(img.get_pixel(63, 0), &Rgb::<u8>([0,127,0]));
-        assert_eq!(img.get_pixel(0, 32), &Rgb::<u8>([0,0,127]));
-        assert_eq!(img.get_pixel(63, 63), &Rgb::<u8>([0,0,127]));
+        assert_eq!(img.get_pixel(0, 0), &Rgb::<u8>([255, 0, 0]));
+        assert_eq!(img.get_pixel(31, 31), &Rgb::<u8>([255, 0, 0]));
+        assert_eq!(img.get_pixel(32, 31), &Rgb::<u8>([0, 127, 0]));
+        assert_eq!(img.get_pixel(63, 0), &Rgb::<u8>([0, 127, 0]));
+        assert_eq!(img.get_pixel(0, 32), &Rgb::<u8>([0, 0, 127]));
+        assert_eq!(img.get_pixel(63, 63), &Rgb::<u8>([0, 0, 127]));
     }
 }

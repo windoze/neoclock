@@ -8,5 +8,5 @@ fn main() {
         .env("AR", "armv7-unknown-linux-gnueabihf-ar")
         .status()
         .unwrap();
-    println!("cargo:rustc-link-search=native={}", "rpi-rgb-led-matrix/lib");
+    println!("cargo:rustc-link-search=native=rpi-rgb-led-matrix/lib");
 }

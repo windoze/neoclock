@@ -1,6 +1,6 @@
+use crate::{deserialize_pixel, Part, PartCache, PartImage, PartPixel};
 use async_trait::async_trait;
 use serde::Deserialize;
-use crate::{Part, PartPixel, PartImage, PartCache, deserialize_pixel};
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct SolidWidget {
@@ -24,4 +24,3 @@ impl Part for SolidWidget {
         Ok(())
     }
 }
-

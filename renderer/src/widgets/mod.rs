@@ -1,23 +1,23 @@
-mod font;
-mod solid_widget;
-mod clock_widget;
 mod calendar_widget;
-mod matrix_rain_widget;
-mod gif_widget;
+mod clock_widget;
 mod flyer_widget;
+mod font;
+mod gif_widget;
+mod matrix_rain_widget;
+mod solid_widget;
 mod wigwag_widget;
 
+use crate::{Part, PartCache, RenderError};
 use async_trait::async_trait;
 use serde::Deserialize;
-use crate::{Part, PartCache, RenderError};
 
-pub use font::{Font, FontConfig};
-pub use solid_widget::SolidWidget;
-pub use clock_widget::ClockWidget;
 pub use calendar_widget::CalendarWidget;
-pub use matrix_rain_widget::MatrixRainWidget;
-pub use gif_widget::GifWidget;
+pub use clock_widget::ClockWidget;
 pub use flyer_widget::FlyerWidget;
+pub use font::{Font, FontConfig};
+pub use gif_widget::GifWidget;
+pub use matrix_rain_widget::MatrixRainWidget;
+pub use solid_widget::SolidWidget;
 pub use wigwag_widget::WigwagWidget;
 
 #[derive(Clone, Debug, Deserialize)]

@@ -4,8 +4,8 @@ use async_trait::async_trait;
 use image::Rgba;
 use serde::Deserialize;
 
-use crate::{deserialize_pixel, Part, PartCache, RenderError, PartPixel, movers::Wigwagable};
 use super::FontConfig;
+use crate::{deserialize_pixel, movers::Wigwagable, Part, PartCache, PartPixel, RenderError};
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(default)]

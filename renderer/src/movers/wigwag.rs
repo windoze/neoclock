@@ -1,6 +1,6 @@
-use std::cmp::{min, max};
+use std::cmp::{max, min, Ordering};
 
-use image::{Pixel, GenericImageView, ImageBuffer, GenericImage};
+use image::{GenericImage, GenericImageView, ImageBuffer, Pixel};
 
 use crate::{PartImage, PartPixel};
 
@@ -26,12 +26,9 @@ where
     P: Pixel + 'static,
     P::Subpixel: 'static,
 {
-    fn new<V>(
-        image: V,
-        target_width: u32,
-        target_height: u32
-    ) -> Self
-    where V: GenericImageView<Pixel=P>
+    fn new<V>(image: V, target_width: u32, target_height: u32) -> Self
+    where
+        V: GenericImageView<Pixel = P>,
     {
         let min_x = min(0, (target_width as i32) - (image.width() as i32));
         let max_x = max(0, (target_width as i32) - (image.width() as i32));
@@ -39,23 +36,20 @@ where
         let max_y = max(0, (target_height as i32) - (image.height() as i32));
         let current_x = 0i32;
         let current_y = 0i32;
-        let delta_x = if image.width() > target_width {
-            -1
-        } else if image.width() < target_width {
-            1
-        } else {
-            0
+        let delta_x = match image.width().cmp(&target_width) {
+            Ordering::Greater => -1,
+            Ordering::Less => 1,
+            Ordering::Equal => 0,
         };
-        let delta_y = if image.height() > target_height {
-            -1
-        } else if image.height() < target_height {
-            1
-        } else {
-            0
+        let delta_y = match image.height().cmp(&target_height) {
+            Ordering::Greater => -1,
+            Ordering::Less => 1,
+            Ordering::Equal => 0,
         };
         Self {
             image: {
-                let mut img = ImageBuffer::<P, Vec<P::Subpixel>>::new(image.width(), image.height());
+                let mut img =
+                    ImageBuffer::<P, Vec<P::Subpixel>>::new(image.width(), image.height());
                 img.copy_from(&image, 0, 0).unwrap();
                 img
             },
@@ -78,22 +72,23 @@ where
     P: Pixel + 'static,
     P::Subpixel: 'static,
 {
-    type Item = ImageBuffer::<P, Vec<P::Subpixel>>;
+    type Item = ImageBuffer<P, Vec<P::Subpixel>>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let mut image = ImageBuffer::<P, Vec<P::Subpixel>>::new(self.target_width, self.target_height);
+        let mut image =
+            ImageBuffer::<P, Vec<P::Subpixel>>::new(self.target_width, self.target_height);
         blit(&self.image, &mut image, self.current_x, self.current_y);
 
         let new_x = self.current_x + self.delta_x;
-        if new_x < self.min_x || new_x >= self.max_x {
+        if new_x < self.min_x || new_x > self.max_x {
             // Out of range
-            self.delta_x = - self.delta_x
+            self.delta_x = -self.delta_x
         }
         self.current_x += self.delta_x;
         let new_y = self.current_y + self.delta_y;
-        if new_y < self.min_y || new_y >= self.max_y {
+        if new_y < self.min_y || new_y > self.max_y {
             // Out of range
-            self.delta_y = - self.delta_y
+            self.delta_y = -self.delta_y
         }
         self.current_y += self.delta_y;
 
@@ -119,7 +114,7 @@ impl Wigwagable<PartPixel> for PartImage {
 mod tests {
     use image::ImageFormat;
 
-    use crate::{PartPixel, PartImage};
+    use crate::{PartImage, PartPixel};
 
     use super::Wigwagable;
 
@@ -140,7 +135,8 @@ mod tests {
 
         let mut w = image.wigwag(5, 2);
         let img = w.next().unwrap();
-        img.save_with_format("/tmp/w1.png", ImageFormat::Png).unwrap();
+        img.save_with_format("/tmp/w1.png", ImageFormat::Png)
+            .unwrap();
         assert_eq!(img.get_pixel(0, 0), &RED);
         assert_eq!(img.get_pixel(0, 1), &RED);
         assert_eq!(img.get_pixel(1, 0), &RED);
@@ -152,7 +148,8 @@ mod tests {
         assert_eq!(img.get_pixel(4, 0), &TRANSPARENT);
         assert_eq!(img.get_pixel(4, 1), &TRANSPARENT);
         let img = w.next().unwrap();
-        img.save_with_format("/tmp/w2.png", ImageFormat::Png).unwrap();
+        img.save_with_format("/tmp/w2.png", ImageFormat::Png)
+            .unwrap();
         assert_eq!(img.get_pixel(0, 0), &TRANSPARENT);
         assert_eq!(img.get_pixel(0, 1), &TRANSPARENT);
         assert_eq!(img.get_pixel(1, 0), &RED);
@@ -164,7 +161,8 @@ mod tests {
         assert_eq!(img.get_pixel(4, 0), &TRANSPARENT);
         assert_eq!(img.get_pixel(4, 1), &TRANSPARENT);
         let img = w.next().unwrap();
-        img.save_with_format("/tmp/w3.png", ImageFormat::Png).unwrap();
+        img.save_with_format("/tmp/w3.png", ImageFormat::Png)
+            .unwrap();
         assert_eq!(img.get_pixel(0, 0), &TRANSPARENT);
         assert_eq!(img.get_pixel(0, 1), &TRANSPARENT);
         assert_eq!(img.get_pixel(1, 0), &TRANSPARENT);
@@ -176,7 +174,8 @@ mod tests {
         assert_eq!(img.get_pixel(4, 0), &RED);
         assert_eq!(img.get_pixel(4, 1), &RED);
         let img = w.next().unwrap();
-        img.save_with_format("/tmp/w4.png", ImageFormat::Png).unwrap();
+        img.save_with_format("/tmp/w4.png", ImageFormat::Png)
+            .unwrap();
         assert_eq!(img.get_pixel(0, 0), &TRANSPARENT);
         assert_eq!(img.get_pixel(0, 1), &TRANSPARENT);
         assert_eq!(img.get_pixel(1, 0), &RED);
@@ -188,7 +187,8 @@ mod tests {
         assert_eq!(img.get_pixel(4, 0), &TRANSPARENT);
         assert_eq!(img.get_pixel(4, 1), &TRANSPARENT);
         let img = w.next().unwrap();
-        img.save_with_format("/tmp/w5.png", ImageFormat::Png).unwrap();
+        img.save_with_format("/tmp/w5.png", ImageFormat::Png)
+            .unwrap();
         assert_eq!(img.get_pixel(0, 0), &RED);
         assert_eq!(img.get_pixel(0, 1), &RED);
         assert_eq!(img.get_pixel(1, 0), &RED);

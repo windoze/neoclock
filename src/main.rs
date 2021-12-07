@@ -1,5 +1,5 @@
 use anyhow::Result;
-use clap::{App, Arg, value_t};
+use clap::{value_t, App, Arg};
 use log::info;
 use rpi_led_matrix::{LedCanvas, LedColor, LedMatrix, LedMatrixOptions};
 use std::{fs::File, io::BufReader, time::Duration};
@@ -63,7 +63,7 @@ async fn main() -> Result<()> {
     options.set_rows(64);
     options.set_refresh_rate(false);
     let matrix = LedMatrix::new(Some(options), None).unwrap();
-    
+
     let screen = Screen::new(64, 64, parts);
     let mut canvas = Canvas(matrix.offscreen_canvas());
     loop {

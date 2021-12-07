@@ -40,14 +40,15 @@ impl Default for FontConfig {
     }
 }
 
+#[allow(clippy::large_enum_variant)]
 pub enum Font {
-    TTF {
+    Ttf {
         font: rusttype::Font<'static>,
         height: f32,
         scale_x: f32,
         scale_y: f32,
     },
-    BDF {
+    Bdf {
         font: bdf::Font,
         scale_x: u32,
         scale_y: u32,
@@ -57,13 +58,13 @@ pub enum Font {
 impl Font {
     fn load(path: &str, height: f32, scale_x: f32, scale_y: f32) -> Result<Self, RenderError> {
         Ok(if path.to_lowercase().ends_with(".bdf") {
-            Self::BDF {
+            Self::Bdf {
                 font: bdf::open(path).map_err(|_| RenderError::FontError(path.to_owned()))?,
                 scale_x: scale_x as u32,
                 scale_y: scale_y as u32,
             }
         } else {
-            Self::TTF {
+            Self::Ttf {
                 font: {
                     let font_data = if path.is_empty() {
                         Vec::from(super::font::DEF_FONT)
@@ -71,7 +72,7 @@ impl Font {
                         std::fs::read(path)?
                     };
                     rusttype::Font::try_from_vec(font_data)
-                        .ok_or(RenderError::FontError(path.to_owned()))?
+                        .ok_or_else(|| RenderError::FontError(path.to_owned()))?
                 },
                 height,
                 scale_x,
@@ -82,7 +83,7 @@ impl Font {
 
     pub fn draw_text(&self, text: &str, color: PartPixel) -> PartImage {
         match self {
-            Font::TTF {
+            Font::Ttf {
                 font,
                 height,
                 scale_x,
@@ -95,17 +96,11 @@ impl Font {
                 scale_x.to_owned(),
                 scale_y.to_owned(),
             ),
-            Font::BDF {
+            Font::Bdf {
                 font,
                 scale_x,
                 scale_y,
-            } => draw_bdf_text(
-                text,
-                color,
-                font,
-                scale_x.to_owned(),
-                scale_y.to_owned(),
-            ),
+            } => draw_bdf_text(text, color, font, scale_x.to_owned(), scale_y.to_owned()),
         }
     }
 }
