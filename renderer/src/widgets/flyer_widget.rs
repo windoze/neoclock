@@ -5,10 +5,9 @@ use image::{GenericImage, Rgba};
 use log::debug;
 use serde::Deserialize;
 
-use super::FontConfig;
+use super::{FontConfig, super::movers::{ScrollIterator, Scrollable}};
 use crate::{
     deserialize_pixel, Part, PartCache, PartChannel, PartImage, PartPixel, RenderError,
-    ScrollIterator, Scrollable,
 };
 
 #[derive(Clone, Debug, Deserialize)]
@@ -68,7 +67,7 @@ impl Part for FlyerWidget {
                         height += h;
                         true
                     } else {
-                        debug!("Remove message '{}'.", m.text);
+                        debug!("Removed message '{}'.", m.text);
                         false
                     }
                 })
@@ -90,15 +89,11 @@ impl Part for FlyerWidget {
             }
 
             let d = Duration::from_millis((1000 / self.speed) as u64);
-            if let Some(s) = match tokio::time::timeout(d, channel.recv()).await {
-                Ok(s) => s,
-                Err(_) => None,
-            } {
-                let mut msg: FlyerMessage = serde_json::from_str(&s).unwrap_or_default();
+            if let Some(mut msg) = self.try_read::<FlyerMessage>(&mut channel, d).await {
                 if msg.ttl > 0 {
-                    debug!("Got message '{:#?}'", msg.text);
+                    debug!("Got message '{:#?}'", msg);
                     msg.expiration = Some(Instant::now() + Duration::from_secs(msg.ttl as u64));
-                    let img = font.draw_text(&msg.text, self.text_color);
+                    let img = font.draw_text(&msg.text, self.text_color, self.background_color);
                     messages.push((
                         msg,
                         img.height(),

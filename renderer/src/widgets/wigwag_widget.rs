@@ -50,7 +50,7 @@ impl Part for WigwagWidget {
     ) -> Result<(), RenderError> {
         let font = self.font_config.load()?;
 
-        let text_img = font.draw_text(&self.text, self.text_color);
+        let text_img = font.draw_text(&self.text, self.text_color, self.background_color);
         let mut f = text_img.wigwag(self.width, self.height);
         loop {
             if let Ok(mut write_guard) = cache.write() {

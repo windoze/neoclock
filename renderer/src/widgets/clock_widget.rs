@@ -69,7 +69,7 @@ impl crate::Part for ClockWidget {
             }
             .to_string();
 
-            let img = font.draw_text(&time_str, self.text_color);
+            let img = font.draw_text(&time_str, self.text_color, self.background_color);
             if let Ok(mut write_guard) = cache.write() {
                 (*write_guard)[id] = Some(img);
             }

@@ -64,7 +64,7 @@ impl Part for CalendarWidget {
             let now = chrono::Local::now();
             let date_str = now.format("%b %d %a").to_string();
 
-            let img = font.draw_text(&date_str, self.text_color);
+            let img = font.draw_text(&date_str, self.text_color, self.background_color);
 
             if let Ok(mut write_guard) = cache.write() {
                 (*write_guard)[id] = Some(img);

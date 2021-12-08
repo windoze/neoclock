@@ -1,21 +1,22 @@
 mod movers;
 mod widgets;
 
-pub use movers::{ScrollIterator, Scrollable};
 pub use widgets::Widget;
-pub type PartPixel = image::Rgba<u8>;
-pub type PartImage = ImageBuffer<PartPixel, Vec<u8>>;
-pub type ScreenPixel = image::Rgb<u8>;
-pub type ScreenImage = ImageBuffer<ScreenPixel, Vec<u8>>;
-pub type PartSender = tokio::sync::mpsc::Sender<String>;
-pub type PartChannel = tokio::sync::mpsc::Receiver<String>;
+pub(crate) type PartPixel = image::Rgba<u8>;
+pub(crate) type PartImage = ImageBuffer<PartPixel, Vec<u8>>;
+pub(crate) type ScreenPixel = image::Rgb<u8>;
+pub(crate) type ScreenImage = ImageBuffer<ScreenPixel, Vec<u8>>;
+pub(crate) type PartSender = tokio::sync::mpsc::Sender<String>;
+pub(crate) type PartChannel = tokio::sync::mpsc::Receiver<String>;
 
 use async_trait::async_trait;
 use image::{buffer::ConvertBuffer, ImageBuffer, Pixel};
-use serde::{de::Error, Deserialize, Deserializer, Serialize};
-use std::sync::{Arc, RwLock};
+use serde::{de::{Error, DeserializeOwned}, Deserialize, Deserializer, Serialize};
+use std::{sync::{Arc, RwLock}, iter::repeat};
 use thiserror::Error;
 use tokio::task::JoinHandle;
+
+pub const TRANSPARENT: PartPixel = image::Rgba::<u8>([0, 0, 0, 0]);
 
 #[derive(Error, Debug)]
 pub enum RenderError {
@@ -58,21 +59,35 @@ trait Part {
         id: usize,
         mut channel: PartChannel,
     ) -> Result<(), RenderError>;
+
+    async fn try_read<T>(&self, channel: &mut PartChannel, d: std::time::Duration) -> Option<T>
+    where T: DeserializeOwned
+    {
+        if let Some(s) = match tokio::time::timeout(d, channel.recv()).await {
+            Ok(s) => s,
+            Err(_) => None,
+        } {
+            serde_json::from_str(&s).ok()
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct WidgetConf {
-    x: u32,
-    y: u32,
+    pub x: u32,
+    pub y: u32,
     #[serde(flatten)]
-    widget: Widget,
+    pub widget: Widget,
 }
 
 pub struct Screen {
-    width: u32,
-    height: u32,
+    pub width: u32,
+    pub height: u32,
     positions: Vec<(u32, u32)>,
     part_contents: PartCache,
+    part_visible: Vec<bool>,
     children: Vec<JoinHandle<Result<(), RenderError>>>,
     senders: Vec<PartSender>,
 }
@@ -100,6 +115,7 @@ impl Screen {
             height,
             positions,
             part_contents,
+            part_visible: repeat(true).take(children.len()).collect(),
             children,
             senders,
         }
@@ -117,24 +133,21 @@ impl Screen {
         for px in screen.pixels_mut() {
             (*px) = image::Rgba::<u8>([0, 0, 0, 255]);
         }
-        // Blend every part image into `screen`
+        // Blend every visible part image into `screen`
         if let Ok(read_guard) = self.part_contents.read() {
-            for (idx, img) in (*read_guard).iter().enumerate() {
-                match img {
-                    Some(img) => {
-                        let (x, y) = self.positions[idx];
-                        // Blend `img` into `screen` at position `(x, y)`
-                        for px in 0..img.width() {
-                            for py in 0..img.height() {
-                                if (px + x) < self.width && (py + y) < self.height {
-                                    screen
-                                        .get_pixel_mut(px + x, py + y)
-                                        .blend(img.get_pixel(px, py))
-                                }
+            for (idx, image) in (*read_guard).iter().enumerate().filter(|(idx, _)| self.part_visible[*idx] ) {
+                if let Some(img) = image {
+                    let (x, y) = self.positions[idx];
+                    // Blend `img` into `screen` at position `(x, y)`
+                    for px in 0..img.width() {
+                        for py in 0..img.height() {
+                            if (px + x) < self.width && (py + y) < self.height {
+                                screen
+                                    .get_pixel_mut(px + x, py + y)
+                                    .blend(img.get_pixel(px, py))
                             }
                         }
-                    },
-                    None => {},
+                    }
                 }
             }
         }
@@ -165,9 +178,21 @@ impl Screen {
     {
         self.send_str(idx, serde_json::to_string(t)?).await
     }
+
+    pub fn hide_part(&mut self, idx: usize) {
+        if idx < self.part_visible.len() {
+            self.part_visible[idx] = false;
+        }
+    }
+
+    pub fn show_part(&mut self, idx: usize) {
+        if idx < self.part_visible.len() {
+            self.part_visible[idx] = true;
+        }
+    }
 }
 
-fn deserialize_pixel<'de, D>(deserializer: D) -> Result<PartPixel, D::Error>
+pub(crate) fn deserialize_pixel<'de, D>(deserializer: D) -> Result<PartPixel, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -181,6 +206,17 @@ where
         color.b as u8,
         (color.a * 255f32) as u8,
     ]))
+}
+
+pub(crate) fn fill<P, Container>(image: &mut ImageBuffer<P, Container>, color: P)
+where
+    P: Pixel + 'static,
+    P::Subpixel: 'static,
+    Container: std::ops::Deref<Target = [P::Subpixel]> + std::ops::DerefMut,
+{
+    for p in image.pixels_mut() {
+        (*p) = color;
+    }
 }
 
 #[cfg(test)]

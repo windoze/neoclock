@@ -81,7 +81,7 @@ impl Font {
         })
     }
 
-    pub fn draw_text(&self, text: &str, color: PartPixel) -> PartImage {
+    pub fn draw_text(&self, text: &str, color: PartPixel,    bg_color: PartPixel) -> PartImage {
         match self {
             Font::Ttf {
                 font,
@@ -91,6 +91,7 @@ impl Font {
             } => draw_ttf_text(
                 text,
                 color,
+                bg_color,
                 font,
                 height.to_owned(),
                 scale_x.to_owned(),
@@ -100,7 +101,7 @@ impl Font {
                 font,
                 scale_x,
                 scale_y,
-            } => draw_bdf_text(text, color, font, scale_x.to_owned(), scale_y.to_owned()),
+            } => draw_bdf_text(text, color, bg_color, font, scale_x.to_owned(), scale_y.to_owned()),
         }
     }
 }
@@ -108,6 +109,7 @@ impl Font {
 fn draw_ttf_text(
     text: &str,
     color: PartPixel,
+    bg_color: PartPixel,
     font: &rusttype::Font,
     height: f32,
     scale_x: f32,
@@ -131,6 +133,9 @@ fn draw_ttf_text(
         .ceil() as usize;
 
     let mut img = PartImage::new(width as u32, pixel_height as u32);
+    if bg_color != crate::TRANSPARENT {
+        crate::fill(&mut img, bg_color);
+    }
 
     for g in glyphs {
         if let Some(bb) = g.pixel_bounding_box() {
@@ -156,6 +161,7 @@ fn draw_ttf_text(
 fn draw_bdf_text(
     text: &str,
     color: PartPixel,
+    bg_color: PartPixel,
     font: &bdf::Font,
     scale_x: u32,
     scale_y: u32,
@@ -174,6 +180,9 @@ fn draw_bdf_text(
     }
     let mut offset_x = 0u32;
     let mut image = ImageBuffer::<PartPixel, Vec<u8>>::new(width * scale_x, height * scale_y);
+    if bg_color != crate::TRANSPARENT {
+        crate::fill(&mut image, bg_color);
+    }
     for c in text.chars() {
         let glyph: &Glyph = if font.glyphs().contains_key(&c) {
             &font.glyphs()[&c]
