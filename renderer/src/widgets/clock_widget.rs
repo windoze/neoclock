@@ -1,9 +1,11 @@
 use async_trait::async_trait;
 use chrono::{DateTime, NaiveDateTime, Utc};
 use image::Rgba;
+use log::debug;
 use serde::Deserialize;
+use tokio::time::timeout;
 
-use crate::{deserialize_pixel, PartCache, PartPixel, RenderError};
+use crate::{deserialize_pixel, PartCache, PartChannel, PartPixel, RenderError};
 
 use super::FontConfig;
 
@@ -21,7 +23,7 @@ pub struct ClockWidget {
 }
 
 impl ClockWidget {
-    async fn sleep(&self) {
+    async fn sleep(&self, channel: &mut PartChannel) -> Option<String> {
         // Sleep until the beginning of the next second
         // TODO: Is there any better way to do that?
         let now = Utc::now();
@@ -29,7 +31,10 @@ impl ClockWidget {
         let ns = NaiveDateTime::from_timestamp(ts, 0);
         let nt: DateTime<Utc> = DateTime::from_utc(ns, Utc);
         let d = nt - now;
-        tokio::time::sleep(d.to_std().unwrap()).await;
+        match timeout(d.to_std().unwrap(), channel.recv()).await {
+            Ok(v) => v,
+            Err(_) => None,
+        }
     }
 }
 
@@ -47,7 +52,12 @@ impl Default for ClockWidget {
 
 #[async_trait]
 impl crate::Part for ClockWidget {
-    async fn start(&mut self, cache: PartCache, id: usize) -> Result<(), RenderError> {
+    async fn start(
+        &mut self,
+        cache: PartCache,
+        id: usize,
+        mut channel: PartChannel,
+    ) -> Result<(), RenderError> {
         let font = self.font_config.load()?;
 
         loop {
@@ -63,7 +73,10 @@ impl crate::Part for ClockWidget {
             if let Ok(mut write_guard) = cache.write() {
                 (*write_guard)[id] = img;
             }
-            self.sleep().await;
+            if let Some(s) = self.sleep(&mut channel).await {
+                // TODO: Received a message
+                debug!("Got message '{}'", s);
+            }
         }
     }
 }

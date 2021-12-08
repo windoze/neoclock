@@ -1,19 +1,21 @@
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use async_trait::async_trait;
-use image::Rgba;
+use image::{GenericImage, Rgba};
+use log::debug;
 use serde::Deserialize;
 
 use super::FontConfig;
-use crate::{deserialize_pixel, Part, PartCache, PartPixel, RenderError, Scrollable};
+use crate::{
+    deserialize_pixel, Part, PartCache, PartChannel, PartImage, PartPixel, RenderError,
+    ScrollIterator, Scrollable,
+};
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(default)]
 pub struct FlyerWidget {
     pub width: u32,
     pub height: u32,
-    // TODO:
-    pub text: String,
     #[serde(deserialize_with = "deserialize_pixel")]
     pub text_color: PartPixel,
     #[serde(deserialize_with = "deserialize_pixel")]
@@ -28,7 +30,6 @@ impl Default for FlyerWidget {
         Self {
             width: Default::default(),
             height: Default::default(),
-            text: Default::default(),
             text_color: Rgba::<u8>([255, 255, 0, 255]),
             background_color: Rgba::<u8>([0; 4]),
             font_config: Default::default(),
@@ -37,18 +38,71 @@ impl Default for FlyerWidget {
     }
 }
 
+#[derive(Clone, Debug, Default, Deserialize)]
+struct FlyerMessage {
+    text: String,
+    ttl: u32,
+
+    #[serde(skip)]
+    expiration: Option<Instant>,
+}
+
 #[async_trait]
 impl Part for FlyerWidget {
-    async fn start(&mut self, cache: PartCache, id: usize) -> Result<(), RenderError> {
+    async fn start(
+        &mut self,
+        cache: PartCache,
+        id: usize,
+        mut channel: PartChannel,
+    ) -> Result<(), RenderError> {
         let font = self.font_config.load()?;
 
-        let text_img = font.draw_text(&self.text, self.text_color);
-        let mut f = text_img.scroll(self.width, self.height, -1, 0);
+        let mut messages: Vec<(FlyerMessage, u32, ScrollIterator<PartPixel>)> = Default::default();
         loop {
-            if let Ok(mut write_guard) = cache.write() {
-                (*write_guard)[id] = f.next().unwrap();
+            let n = Instant::now();
+            let mut height: u32 = 0;
+            messages = messages
+                .into_iter()
+                .filter(|(m, h, _)| {
+                    if m.expiration.is_some() && m.expiration.unwrap() > n {
+                        height += h;
+                        true
+                    } else {
+                        debug!("Remove message '{}'.", m.text);
+                        false
+                    }
+                })
+                .collect();
+
+            let mut image = PartImage::new(self.width, height);
+            if !messages.is_empty() {
+                let mut y = 0u32;
+                for (_, h, i) in messages.iter_mut() {
+                    image.copy_from(&(i.next().unwrap()), 0, y).unwrap();
+                    y += *h;
+                }
             }
-            tokio::time::sleep(Duration::from_millis((1000 / self.speed) as u64)).await;
+            if let Ok(mut write_guard) = cache.write() {
+                (*write_guard)[id] = image;
+            }
+
+            let d = Duration::from_millis((1000 / self.speed) as u64);
+            if let Some(s) = match tokio::time::timeout(d, channel.recv()).await {
+                Ok(s) => s,
+                Err(_) => None,
+            } {
+                let mut msg: FlyerMessage = serde_json::from_str(&s).unwrap_or_default();
+                if msg.ttl > 0 {
+                    debug!("Got message '{:#?}'", msg.text);
+                    msg.expiration = Some(Instant::now() + Duration::from_secs(msg.ttl as u64));
+                    let img = font.draw_text(&msg.text, self.text_color);
+                    messages.push((
+                        msg,
+                        img.height(),
+                        img.scroll(self.width, img.height(), -1, 0),
+                    ));
+                }
+            }
         }
     }
 }

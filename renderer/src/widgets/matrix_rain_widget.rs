@@ -1,8 +1,9 @@
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use crate::{deserialize_pixel, Part, PartCache, PartImage, PartPixel};
+use crate::{deserialize_pixel, Part, PartCache, PartChannel, PartImage, PartPixel};
 use async_trait::async_trait;
 use image::Rgba;
+use log::debug;
 use rand::{Rng, SeedableRng};
 use serde::Deserialize;
 
@@ -33,7 +34,12 @@ impl Default for MatrixRainWidget {
 
 #[async_trait]
 impl Part for MatrixRainWidget {
-    async fn start(&mut self, cache: PartCache, id: usize) -> Result<(), crate::RenderError> {
+    async fn start(
+        &mut self,
+        cache: PartCache,
+        id: usize,
+        mut channel: PartChannel,
+    ) -> Result<(), crate::RenderError> {
         let mut lines: Vec<(u32, u32)> = Vec::new();
         let mut last_in: u32 = 0;
         let mut rng = rand::rngs::StdRng::seed_from_u64(
@@ -74,7 +80,14 @@ impl Part for MatrixRainWidget {
             if let Ok(mut write_guard) = cache.write() {
                 (*write_guard)[id] = img;
             }
-            tokio::time::sleep(Duration::from_millis((1000 / self.speed) as u64)).await;
+            let d = Duration::from_millis((1000 / self.speed) as u64);
+            if let Some(s) = match tokio::time::timeout(d, channel.recv()).await {
+                Ok(s) => s,
+                Err(_) => None,
+            } {
+                // TODO: Received a message
+                debug!("Got message '{}'", s);
+            }
         }
     }
 }

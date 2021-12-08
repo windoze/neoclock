@@ -1,9 +1,11 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Datelike, Duration, NaiveDate, Utc};
 use image::Rgba;
+use log::debug;
 use serde::Deserialize;
+use tokio::time::timeout;
 
-use crate::{deserialize_pixel, Part, PartCache, PartPixel, RenderError};
+use crate::{deserialize_pixel, Part, PartCache, PartChannel, PartPixel, RenderError};
 
 use super::font::FontConfig;
 
@@ -21,7 +23,7 @@ pub struct CalendarWidget {
 }
 
 impl CalendarWidget {
-    async fn sleep(&self) {
+    async fn sleep(&self, channel: &mut PartChannel) -> Option<String> {
         // Sleep until the beginning of the next day
         // TODO: Is there any better way to do that?
         let now = Utc::now();
@@ -30,7 +32,10 @@ impl CalendarWidget {
             .checked_add_signed(Duration::from_std(std::time::Duration::from_secs(86400)).unwrap())
             .unwrap();
         let d = nt - now;
-        tokio::time::sleep(d.to_std().unwrap()).await;
+        match timeout(d.to_std().unwrap(), channel.recv()).await {
+            Ok(v) => v,
+            Err(_) => None,
+        }
     }
 }
 
@@ -48,7 +53,12 @@ impl Default for CalendarWidget {
 
 #[async_trait]
 impl Part for CalendarWidget {
-    async fn start(&mut self, cache: PartCache, id: usize) -> Result<(), RenderError> {
+    async fn start(
+        &mut self,
+        cache: PartCache,
+        id: usize,
+        mut channel: PartChannel,
+    ) -> Result<(), RenderError> {
         let font = self.font_config.load()?;
         loop {
             let now = chrono::Local::now();
@@ -59,7 +69,10 @@ impl Part for CalendarWidget {
             if let Ok(mut write_guard) = cache.write() {
                 (*write_guard)[id] = img;
             }
-            self.sleep().await;
+            if let Some(s) = self.sleep(&mut channel).await {
+                // TODO: Received a message
+                debug!("Got message '{}'", s);
+            }
         }
     }
 }

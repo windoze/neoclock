@@ -7,7 +7,7 @@ mod matrix_rain_widget;
 mod solid_widget;
 mod wigwag_widget;
 
-use crate::{Part, PartCache, RenderError};
+use crate::{Part, PartCache, PartChannel, RenderError};
 use async_trait::async_trait;
 use serde::Deserialize;
 
@@ -34,15 +34,20 @@ pub enum Widget {
 
 #[async_trait]
 impl Part for Widget {
-    async fn start(&mut self, cache: PartCache, id: usize) -> Result<(), RenderError> {
+    async fn start(
+        &mut self,
+        cache: PartCache,
+        id: usize,
+        channel: PartChannel,
+    ) -> Result<(), RenderError> {
         match self {
-            Self::Solid(s) => s.start(cache, id).await,
-            Self::Clock(s) => s.start(cache, id).await,
-            Self::Calendar(s) => s.start(cache, id).await,
-            Self::MatrixRain(s) => s.start(cache, id).await,
-            Self::Gif(s) => s.start(cache, id).await,
-            Self::Flyer(s) => s.start(cache, id).await,
-            Self::Wigwag(s) => s.start(cache, id).await,
+            Self::Solid(s) => s.start(cache, id, channel).await,
+            Self::Clock(s) => s.start(cache, id, channel).await,
+            Self::Calendar(s) => s.start(cache, id, channel).await,
+            Self::MatrixRain(s) => s.start(cache, id, channel).await,
+            Self::Gif(s) => s.start(cache, id, channel).await,
+            Self::Flyer(s) => s.start(cache, id, channel).await,
+            Self::Wigwag(s) => s.start(cache, id, channel).await,
         }
     }
 }

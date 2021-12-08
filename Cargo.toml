@@ -5,16 +5,18 @@ authors = ["Chen Xu <windoze@0d0a.com>"]
 edition = "2021"
 
 [workspace]
-members = [
-    "renderer"
-]
+members = ["renderer"]
+
+[profile.production]
+inherits = "release"
+lto = true
 
 [dependencies]
 anyhow = "1"
 log = "0.4"
 pretty_env_logger = "0.4"
 tokio = { version = "1", features = ["full"] }
-serde = { version = "1", features = ["default", "serde_derive"]}
+serde = { version = "1", features = ["default", "serde_derive"] }
 serde_json = "1"
 clap = "2"
 rpi-led-matrix = "0.2"

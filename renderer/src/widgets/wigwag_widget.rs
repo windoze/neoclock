@@ -2,10 +2,13 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use image::Rgba;
+use log::debug;
 use serde::Deserialize;
 
 use super::FontConfig;
-use crate::{deserialize_pixel, movers::Wigwagable, Part, PartCache, PartPixel, RenderError};
+use crate::{
+    deserialize_pixel, movers::Wigwagable, Part, PartCache, PartChannel, PartPixel, RenderError,
+};
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(default)]
@@ -39,7 +42,12 @@ impl Default for WigwagWidget {
 
 #[async_trait]
 impl Part for WigwagWidget {
-    async fn start(&mut self, cache: PartCache, id: usize) -> Result<(), RenderError> {
+    async fn start(
+        &mut self,
+        cache: PartCache,
+        id: usize,
+        mut channel: PartChannel,
+    ) -> Result<(), RenderError> {
         let font = self.font_config.load()?;
 
         let text_img = font.draw_text(&self.text, self.text_color);
@@ -48,7 +56,14 @@ impl Part for WigwagWidget {
             if let Ok(mut write_guard) = cache.write() {
                 (*write_guard)[id] = f.next().unwrap();
             }
-            tokio::time::sleep(Duration::from_millis((1000 / self.speed) as u64)).await;
+            let d = Duration::from_millis((1000 / self.speed) as u64);
+            if let Some(s) = match tokio::time::timeout(d, channel.recv()).await {
+                Ok(s) => s,
+                Err(_) => None,
+            } {
+                // TODO: Received a message
+                debug!("Got message '{}'", s);
+            }
         }
     }
 }

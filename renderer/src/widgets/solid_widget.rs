@@ -1,4 +1,4 @@
-use crate::{deserialize_pixel, Part, PartCache, PartImage, PartPixel};
+use crate::{deserialize_pixel, Part, PartCache, PartChannel, PartImage, PartPixel};
 use async_trait::async_trait;
 use serde::Deserialize;
 
@@ -12,7 +12,12 @@ pub struct SolidWidget {
 
 #[async_trait]
 impl Part for SolidWidget {
-    async fn start(&mut self, cache: PartCache, id: usize) -> Result<(), crate::RenderError> {
+    async fn start(
+        &mut self,
+        cache: PartCache,
+        id: usize,
+        _: PartChannel,
+    ) -> Result<(), crate::RenderError> {
         let mut img = PartImage::new(self.width, self.height);
 
         for p in img.pixels_mut() {

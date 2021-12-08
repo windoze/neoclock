@@ -5,7 +5,7 @@ use image::AnimationDecoder;
 use log::{debug, info};
 use serde::Deserialize;
 
-use crate::{Part, PartCache};
+use crate::{Part, PartCache, PartChannel};
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct GifWidget {
@@ -15,7 +15,12 @@ pub struct GifWidget {
 
 #[async_trait]
 impl Part for GifWidget {
-    async fn start(&mut self, cache: PartCache, id: usize) -> Result<(), crate::RenderError> {
+    async fn start(
+        &mut self,
+        cache: PartCache,
+        id: usize,
+        mut channel: PartChannel,
+    ) -> Result<(), crate::RenderError> {
         info!("GifWidget({}) - Loading GIF from '{}'...", id, self.url);
         let bytes = reqwest::Client::default()
             .get(&self.url)
@@ -40,7 +45,13 @@ impl Part for GifWidget {
             let (numer, denom) = frames[i].delay().numer_denom_ms();
             let delay = ((numer as f64 * 1000f64) / (denom as f64)) as u64;
             let d = Duration::from_micros(delay);
-            tokio::time::sleep(d).await;
+            if let Some(s) = match tokio::time::timeout(d, channel.recv()).await {
+                Ok(s) => s,
+                Err(_) => None,
+            } {
+                // TODO: Received a message
+                debug!("Got message '{}'", s);
+            }
 
             i = (i + 1) % frames.len();
         }

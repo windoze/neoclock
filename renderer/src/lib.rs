@@ -7,10 +7,12 @@ pub type PartPixel = image::Rgba<u8>;
 pub type PartImage = ImageBuffer<PartPixel, Vec<u8>>;
 pub type ScreenPixel = image::Rgb<u8>;
 pub type ScreenImage = ImageBuffer<ScreenPixel, Vec<u8>>;
+pub type PartSender = tokio::sync::mpsc::Sender<String>;
+pub type PartChannel = tokio::sync::mpsc::Receiver<String>;
 
 use async_trait::async_trait;
 use image::{buffer::ConvertBuffer, ImageBuffer, Pixel};
-use serde::{de::Error, Deserialize, Deserializer};
+use serde::{de::Error, Deserialize, Deserializer, Serialize};
 use std::sync::{Arc, RwLock};
 use thiserror::Error;
 use tokio::task::JoinHandle;
@@ -34,6 +36,12 @@ pub enum RenderError {
 
     #[error(transparent)]
     IoError(#[from] std::io::Error),
+
+    #[error(transparent)]
+    SendError(#[from] tokio::sync::mpsc::error::SendError<std::string::String>),
+
+    #[error(transparent)]
+    SerializationError(#[from] serde_json::Error),
 }
 
 pub trait Drawable {
@@ -44,7 +52,12 @@ type PartCache = Arc<RwLock<Vec<PartImage>>>;
 
 #[async_trait]
 trait Part {
-    async fn start(&mut self, cache: PartCache, id: usize) -> Result<(), RenderError>;
+    async fn start(
+        &mut self,
+        cache: PartCache,
+        id: usize,
+        mut channel: PartChannel,
+    ) -> Result<(), RenderError>;
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -61,6 +74,7 @@ pub struct Screen {
     positions: Vec<(u32, u32)>,
     part_contents: PartCache,
     children: Vec<JoinHandle<Result<(), RenderError>>>,
+    senders: Vec<PartSender>,
 }
 
 impl Screen {
@@ -71,11 +85,14 @@ impl Screen {
         let part_contents: PartCache = Arc::new(RwLock::new(v));
         let mut children: Vec<JoinHandle<Result<(), RenderError>>> =
             Vec::with_capacity(parts.len());
+        let mut senders: Vec<PartSender> = Vec::with_capacity(parts.len());
         for (idx, mut part) in parts.into_iter().enumerate() {
             let cache = part_contents.clone();
-            children.push(tokio::spawn(
-                async move { part.widget.start(cache, idx).await },
-            ));
+            let (sender, receiver) = tokio::sync::mpsc::channel(100); // TODO:
+            senders.push(sender);
+            children.push(tokio::spawn(async move {
+                part.widget.start(cache, idx, receiver).await
+            }));
         }
 
         Self {
@@ -84,6 +101,7 @@ impl Screen {
             positions,
             part_contents,
             children,
+            senders,
         }
     }
 
@@ -129,6 +147,18 @@ impl Screen {
                 target.set_pixel(x, y, pixel.0[0], pixel.0[1], pixel.0[2]);
             }
         }
+    }
+
+    pub async fn send_str(&self, idx: usize, s: String) -> Result<(), RenderError> {
+        self.senders[idx].send(s).await?;
+        Ok(())
+    }
+
+    pub async fn send<T>(&self, idx: usize, t: &T) -> Result<(), RenderError>
+    where
+        T: Serialize,
+    {
+        self.send_str(idx, serde_json::to_string(t)?).await
     }
 }
 
