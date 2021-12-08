@@ -48,7 +48,7 @@ pub trait Drawable {
     fn set_pixel(&mut self, x: u32, y: u32, r: u8, g: u8, b: u8);
 }
 
-type PartCache = Arc<RwLock<Vec<PartImage>>>;
+type PartCache = Arc<RwLock<Vec<Option<PartImage>>>>;
 
 #[async_trait]
 trait Part {
@@ -120,16 +120,21 @@ impl Screen {
         // Blend every part image into `screen`
         if let Ok(read_guard) = self.part_contents.read() {
             for (idx, img) in (*read_guard).iter().enumerate() {
-                let (x, y) = self.positions[idx];
-                // Blend `img` into `screen` at position `(x, y)`
-                for px in 0..img.width() {
-                    for py in 0..img.height() {
-                        if (px + x) < self.width && (py + y) < self.height {
-                            screen
-                                .get_pixel_mut(px + x, py + y)
-                                .blend(img.get_pixel(px, py))
+                match img {
+                    Some(img) => {
+                        let (x, y) = self.positions[idx];
+                        // Blend `img` into `screen` at position `(x, y)`
+                        for px in 0..img.width() {
+                            for py in 0..img.height() {
+                                if (px + x) < self.width && (py + y) < self.height {
+                                    screen
+                                        .get_pixel_mut(px + x, py + y)
+                                        .blend(img.get_pixel(px, py))
+                                }
+                            }
                         }
-                    }
+                    },
+                    None => {},
                 }
             }
         }

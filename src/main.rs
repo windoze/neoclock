@@ -66,13 +66,13 @@ async fn main() -> Result<()> {
 
     let screen = Screen::new(64, 64, parts);
     let mut canvas = Canvas(matrix.offscreen_canvas());
-    // let t = Instant::now() + Duration::from_secs(3);
+    // let t = std::time::Instant::now() + Duration::from_secs(3);
     // let mut sent = false;
     loop {
         screen.render_to(&mut canvas);
         canvas = Canvas(matrix.swap(canvas.0));
         tokio::time::sleep(Duration::from_millis(1000 / fps)).await;
-        // if !sent && Instant::now() > t {
+        // if !sent && std::time::Instant::now() > t {
         //     sent = true;
         //     screen.send_str(7, r#"{"text":"Hello","ttl":10}"#.to_string()).await.unwrap();
         // }

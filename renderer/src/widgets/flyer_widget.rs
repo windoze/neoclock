@@ -74,16 +74,19 @@ impl Part for FlyerWidget {
                 })
                 .collect();
 
-            let mut image = PartImage::new(self.width, height);
-            if !messages.is_empty() {
+            let img = if messages.is_empty() {
+                None
+            } else {
+                let mut image = PartImage::new(self.width, height);
                 let mut y = 0u32;
                 for (_, h, i) in messages.iter_mut() {
                     image.copy_from(&(i.next().unwrap()), 0, y).unwrap();
                     y += *h;
                 }
-            }
+                Some(image)
+            };
             if let Ok(mut write_guard) = cache.write() {
-                (*write_guard)[id] = image;
+                (*write_guard)[id] = img;
             }
 
             let d = Duration::from_millis((1000 / self.speed) as u64);

@@ -39,7 +39,7 @@ impl Part for GifWidget {
             let img = frames[i].buffer().clone();
 
             if let Ok(mut write_guard) = cache.write() {
-                (*write_guard)[id] = img;
+                (*write_guard)[id] = Some(img);
             }
 
             let (numer, denom) = frames[i].delay().numer_denom_ms();

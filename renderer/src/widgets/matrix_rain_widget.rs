@@ -78,7 +78,7 @@ impl Part for MatrixRainWidget {
 
             last_in -= 1;
             if let Ok(mut write_guard) = cache.write() {
-                (*write_guard)[id] = img;
+                (*write_guard)[id] = Some(img);
             }
             let d = Duration::from_millis((1000 / self.speed) as u64);
             if let Some(s) = match tokio::time::timeout(d, channel.recv()).await {

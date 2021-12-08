@@ -24,7 +24,7 @@ impl Part for SolidWidget {
             *p = self.color;
         }
         if let Ok(mut write_guard) = cache.write() {
-            (*write_guard)[id] = img;
+            (*write_guard)[id] = Some(img);
         }
         Ok(())
     }
