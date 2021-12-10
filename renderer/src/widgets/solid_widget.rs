@@ -1,5 +1,6 @@
 use crate::{deserialize_pixel, Part, PartCache, PartChannel, PartImage, PartPixel};
 use async_trait::async_trait;
+use log::info;
 use serde::Deserialize;
 
 #[derive(Clone, Debug, Deserialize)]
@@ -18,13 +19,14 @@ impl Part for SolidWidget {
         id: usize,
         _: PartChannel,
     ) -> Result<(), crate::RenderError> {
+        info!("SolidWidget({}) started.", id);
         let mut img = PartImage::new(self.width, self.height);
 
         for p in img.pixels_mut() {
             *p = self.color;
         }
         if let Ok(mut write_guard) = cache.write() {
-            (*write_guard)[id] = Some(img);
+            (*write_guard).image = Some(img);
         }
         Ok(())
     }

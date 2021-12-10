@@ -45,13 +45,14 @@ impl Part for GifWidget {
         id: usize,
         mut channel: PartChannel,
     ) -> Result<(), crate::RenderError> {
+        info!("GifWidget({}) started.", id);
         let mut frames = self.load_gif(&self.url).await?;
         let mut i = 0;
         loop {
             let img = frames[i].buffer().clone();
 
             if let Ok(mut write_guard) = cache.write() {
-                (*write_guard)[id] = Some(img);
+                (*write_guard).image = Some(img);
             }
 
             let (numer, denom) = frames[i].delay().numer_denom_ms();

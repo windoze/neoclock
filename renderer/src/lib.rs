@@ -11,12 +11,16 @@ pub(crate) type PartChannel = tokio::sync::mpsc::Receiver<String>;
 
 use async_trait::async_trait;
 use image::{buffer::ConvertBuffer, ImageBuffer, Pixel};
-use serde::{de::{Error, DeserializeOwned}, Deserialize, Deserializer, Serialize};
-use std::{sync::{Arc, RwLock}, iter::repeat};
+use serde::{
+    de::{DeserializeOwned, Error},
+    Deserialize, Deserializer, Serialize,
+};
+use std::sync::{Arc, RwLock};
 use thiserror::Error;
 use tokio::task::JoinHandle;
 
 pub const TRANSPARENT: PartPixel = image::Rgba::<u8>([0, 0, 0, 0]);
+pub const BLACK: PartPixel = image::Rgba::<u8>([0, 0, 0, 255]);
 
 #[derive(Error, Debug)]
 pub enum RenderError {
@@ -49,7 +53,15 @@ pub trait Drawable {
     fn set_pixel(&mut self, x: u32, y: u32, r: u8, g: u8, b: u8);
 }
 
-type PartCache = Arc<RwLock<Vec<Option<PartImage>>>>;
+#[derive(Clone, Debug, Default)]
+pub(crate) struct PartContent {
+    pub(crate) x: u32,
+    pub(crate) y: u32,
+    pub(crate) visible: bool,
+    pub(crate) image: Option<PartImage>,
+}
+
+type PartCache = Arc<RwLock<PartContent>>;
 
 #[async_trait]
 trait Part {
@@ -61,7 +73,8 @@ trait Part {
     ) -> Result<(), RenderError>;
 
     async fn try_read<T>(&self, channel: &mut PartChannel, d: std::time::Duration) -> Option<T>
-    where T: DeserializeOwned
+    where
+        T: DeserializeOwned,
     {
         if let Some(s) = match tokio::time::timeout(d, channel.recv()).await {
             Ok(s) => s,
@@ -78,73 +91,80 @@ trait Part {
 pub struct WidgetConf {
     pub x: u32,
     pub y: u32,
+    pub visible: Option<bool>,
     #[serde(flatten)]
     pub widget: Widget,
+}
+
+struct PartTask {
+    content: PartCache,
+    sender: PartSender,
+    join_handler: JoinHandle<Result<(), RenderError>>,
 }
 
 pub struct Screen {
     pub width: u32,
     pub height: u32,
-    positions: Vec<(u32, u32)>,
-    part_contents: PartCache,
-    part_visible: Vec<bool>,
-    children: Vec<JoinHandle<Result<(), RenderError>>>,
-    senders: Vec<PartSender>,
+    parts: Vec<PartTask>,
 }
 
 impl Screen {
-    pub fn new(width: u32, height: u32, parts: Vec<WidgetConf>) -> Self {
-        let mut v = Vec::with_capacity(parts.len());
-        v.resize(parts.len(), Default::default());
-        let positions: Vec<(u32, u32)> = parts.iter().map(|p| (p.x, p.y)).collect();
-        let part_contents: PartCache = Arc::new(RwLock::new(v));
-        let mut children: Vec<JoinHandle<Result<(), RenderError>>> =
-            Vec::with_capacity(parts.len());
-        let mut senders: Vec<PartSender> = Vec::with_capacity(parts.len());
-        for (idx, mut part) in parts.into_iter().enumerate() {
-            let cache = part_contents.clone();
-            let (sender, receiver) = tokio::sync::mpsc::channel(100); // TODO:
-            senders.push(sender);
-            children.push(tokio::spawn(async move {
-                part.widget.start(cache, idx, receiver).await
+    pub fn new(width: u32, height: u32, widgets: Vec<WidgetConf>) -> Self {
+        let mut children: Vec<PartTask> = Vec::with_capacity(widgets.len());
+
+        for (idx, mut w) in widgets.into_iter().enumerate() {
+            let cache = Arc::new(RwLock::new(PartContent {
+                x: w.x,
+                y: w.y,
+                visible: w.visible.unwrap_or(true),
+                image: None,
             }));
+
+            let (sender, receiver) = tokio::sync::mpsc::channel(100); // TODO:
+            let mc = cache.clone();
+            let join_handler = tokio::spawn(async move { w.widget.start(mc, idx, receiver).await });
+
+            let part = PartTask {
+                content: cache,
+                sender,
+                join_handler,
+            };
+
+            children.push(part);
         }
 
         Self {
             width,
             height,
-            positions,
-            part_contents,
-            part_visible: repeat(true).take(children.len()).collect(),
-            children,
-            senders,
+            parts: children,
         }
     }
 
     pub async fn stop(&mut self) {
-        for c in self.children.iter_mut() {
-            c.abort();
-            c.await.unwrap().unwrap();
+        for c in self.parts.iter_mut() {
+            c.join_handler.abort();
+            (&mut c.join_handler).await.unwrap().unwrap();
         }
     }
 
     fn render(&self) -> ScreenImage {
         let mut screen = PartImage::new(self.width, self.height);
-        for px in screen.pixels_mut() {
-            (*px) = image::Rgba::<u8>([0, 0, 0, 255]);
-        }
+        fill(&mut screen, BLACK);
         // Blend every visible part image into `screen`
-        if let Ok(read_guard) = self.part_contents.read() {
-            for (idx, image) in (*read_guard).iter().enumerate().filter(|(idx, _)| self.part_visible[*idx] ) {
-                if let Some(img) = image {
-                    let (x, y) = self.positions[idx];
-                    // Blend `img` into `screen` at position `(x, y)`
-                    for px in 0..img.width() {
-                        for py in 0..img.height() {
-                            if (px + x) < self.width && (py + y) < self.height {
-                                screen
-                                    .get_pixel_mut(px + x, py + y)
-                                    .blend(img.get_pixel(px, py))
+        for part in self.parts.iter() {
+            if let Ok(read_guard) = part.content.read() {
+                if read_guard.visible {
+                    if let Some(img) = &read_guard.image {
+                        let x = read_guard.x;
+                        let y = read_guard.y;
+                        // Blend `img` into `screen` at position `(x, y)`
+                        for px in 0..img.width() {
+                            for py in 0..img.height() {
+                                if (px + x) < self.width && (py + y) < self.height {
+                                    screen
+                                        .get_pixel_mut(px + x, py + y)
+                                        .blend(img.get_pixel(px, py))
+                                }
                             }
                         }
                     }
@@ -168,7 +188,7 @@ impl Screen {
     }
 
     pub async fn send_str(&self, idx: usize, s: String) -> Result<(), RenderError> {
-        self.senders[idx].send(s).await?;
+        self.parts[idx].sender.send(s).await?;
         Ok(())
     }
 
@@ -179,15 +199,28 @@ impl Screen {
         self.send_str(idx, serde_json::to_string(t)?).await
     }
 
-    pub fn hide_part(&mut self, idx: usize) {
-        if idx < self.part_visible.len() {
-            self.part_visible[idx] = false;
+    pub fn hide_part(&self, idx: usize) {
+        if idx < self.parts.len() {
+            if let Ok(mut write_guard) = self.parts[idx].content.write() {
+                write_guard.visible = false;
+            }
         }
     }
 
     pub fn show_part(&mut self, idx: usize) {
-        if idx < self.part_visible.len() {
-            self.part_visible[idx] = true;
+        if idx < self.parts.len() {
+            if let Ok(mut write_guard) = self.parts[idx].content.write() {
+                write_guard.visible = true;
+            }
+        }
+    }
+
+    pub fn move_part(&self, idx: usize, x: u32, y: u32) {
+        if idx < self.parts.len() {
+            if let Ok(mut write_guard) = self.parts[idx].content.write() {
+                write_guard.x = x;
+                write_guard.y = y;
+            }
         }
     }
 }

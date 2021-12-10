@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use image::Rgba;
-use log::debug;
+use log::{debug, info};
 use serde::Deserialize;
 
 use super::FontConfig;
@@ -48,13 +48,14 @@ impl Part for WigwagWidget {
         id: usize,
         mut channel: PartChannel,
     ) -> Result<(), RenderError> {
+        info!("WigwagWidget({}) started.", id);
         let font = self.font_config.load()?;
 
         let text_img = font.draw_text(&self.text, self.text_color, self.background_color);
         let mut f = text_img.wigwag(self.width, self.height);
         loop {
             if let Ok(mut write_guard) = cache.write() {
-                (*write_guard)[id] = Some(f.next().unwrap());
+                (*write_guard).image = Some(f.next().unwrap());
             }
             let d = Duration::from_millis((1000 / self.speed) as u64);
             if let Some(s) = match tokio::time::timeout(d, channel.recv()).await {

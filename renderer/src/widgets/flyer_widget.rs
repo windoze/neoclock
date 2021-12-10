@@ -2,7 +2,7 @@ use std::time::{Duration, Instant};
 
 use async_trait::async_trait;
 use image::{GenericImage, Rgba};
-use log::debug;
+use log::{debug, info};
 use serde::Deserialize;
 
 use super::{FontConfig, super::movers::{ScrollIterator, Scrollable}};
@@ -54,6 +54,7 @@ impl Part for FlyerWidget {
         id: usize,
         mut channel: PartChannel,
     ) -> Result<(), RenderError> {
+        info!("FlyerWidget({}) started.", id);
         let font = self.font_config.load()?;
 
         let mut messages: Vec<(FlyerMessage, u32, ScrollIterator<PartPixel>)> = Default::default();
@@ -85,7 +86,7 @@ impl Part for FlyerWidget {
                 Some(image)
             };
             if let Ok(mut write_guard) = cache.write() {
-                (*write_guard)[id] = img;
+                (*write_guard).image = img;
             }
 
             let d = Duration::from_millis((1000 / self.speed) as u64);

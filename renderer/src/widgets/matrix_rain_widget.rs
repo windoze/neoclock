@@ -3,7 +3,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use crate::{deserialize_pixel, Part, PartCache, PartChannel, PartImage, PartPixel};
 use async_trait::async_trait;
 use image::Rgba;
-use log::debug;
+use log::{debug, info};
 use rand::{Rng, SeedableRng};
 use serde::Deserialize;
 
@@ -40,6 +40,7 @@ impl Part for MatrixRainWidget {
         id: usize,
         mut channel: PartChannel,
     ) -> Result<(), crate::RenderError> {
+        info!("MatrixRainWidget({}) started.", id);
         let mut lines: Vec<(u32, u32)> = Vec::new();
         let mut last_in: u32 = 0;
         let mut rng = rand::rngs::StdRng::seed_from_u64(
@@ -78,7 +79,7 @@ impl Part for MatrixRainWidget {
 
             last_in -= 1;
             if let Ok(mut write_guard) = cache.write() {
-                (*write_guard)[id] = Some(img);
+                (*write_guard).image = Some(img);
             }
             let d = Duration::from_millis((1000 / self.speed) as u64);
             if let Some(s) = match tokio::time::timeout(d, channel.recv()).await {

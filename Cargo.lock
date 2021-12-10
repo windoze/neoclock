@@ -800,6 +800,7 @@ dependencies = [
  "rpi-led-matrix",
  "serde",
  "serde_json",
+ "thiserror",
  "tokio",
 ]
 

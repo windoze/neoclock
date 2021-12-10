@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Datelike, Duration, NaiveDate, Utc};
 use image::Rgba;
-use log::debug;
+use log::{debug, info};
 use serde::Deserialize;
 use tokio::time::timeout;
 
@@ -59,6 +59,7 @@ impl Part for CalendarWidget {
         id: usize,
         mut channel: PartChannel,
     ) -> Result<(), RenderError> {
+        info!("CalendarWidget({}) started.", id);
         let font = self.font_config.load()?;
         loop {
             let now = chrono::Local::now();
@@ -67,7 +68,7 @@ impl Part for CalendarWidget {
             let img = font.draw_text(&date_str, self.text_color, self.background_color);
 
             if let Ok(mut write_guard) = cache.write() {
-                (*write_guard)[id] = Some(img);
+                (*write_guard).image = Some(img);
             }
             if let Some(s) = self.sleep(&mut channel).await {
                 // TODO: Received a message
