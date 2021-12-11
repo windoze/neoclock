@@ -2,6 +2,7 @@ use std::sync::{Arc, RwLock};
 
 use async_trait::async_trait;
 use image::{ImageBuffer, Pixel, buffer::ConvertBuffer};
+use log::debug;
 use serde::{de::DeserializeOwned, Serialize};
 use tokio::{task::JoinHandle, sync::mpsc::Sender};
 
@@ -25,10 +26,8 @@ pub(crate) trait Part {
     where
         T: DeserializeOwned,
     {
-        if let Some(s) = match tokio::time::timeout(d, channel.recv()).await {
-            Ok(s) => s,
-            Err(_) => None,
-        } {
+        if let Ok(Some(s)) = tokio::time::timeout(d, channel.recv()).await {
+            debug!("Message body: '{}'", s);
             serde_json::from_str(&s).ok()
         } else {
             None
@@ -61,6 +60,19 @@ pub struct Screen {
 
 impl Screen {
     pub fn new(width: u32, height: u32, widgets: Vec<WidgetConf>) -> Screen {
+        debug!("Widget lists:");
+        for (idx, w) in widgets.iter().enumerate() {
+            match w.widget {
+                Widget::Solid(_) => debug!("Widget {}: Solid", idx),
+                Widget::Clock(_) => debug!("Widget {}: Clock", idx),
+                Widget::Calendar(_) => debug!("Widget {}: Calendar", idx),
+                Widget::MatrixRain(_) => debug!("Widget {}: MatrixRain", idx),
+                Widget::Gif(_) => debug!("Widget {}: Gif", idx),
+                Widget::Flyer(_) => debug!("Widget {}: Flyer", idx),
+                Widget::Wigwag(_) => debug!("Widget {}: Wigwag", idx),
+            }
+        }
+
         let mut children: Vec<PartTask> = Vec::with_capacity(widgets.len());
 
         for (idx, mut w) in widgets.into_iter().enumerate() {

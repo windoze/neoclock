@@ -41,27 +41,37 @@ impl Part for GifWidget {
         mut channel: PartChannel,
     ) -> Result<(), crate::RenderError> {
         info!("GifWidget({}) started.", id);
-        let mut frames = self.load_gif(&self.url).await?;
+        let mut frames = self.load_gif(&self.url).await.unwrap_or_default();
         let mut i = 0;
         loop {
-            let img = frames[i].buffer().clone();
+            if !frames.is_empty() {
+                let img = frames[i].buffer().clone();
 
-            if let Ok(mut write_guard) = cache.write() {
-                (*write_guard).image = Some(img);
+                if let Ok(mut write_guard) = cache.write() {
+                    (*write_guard).image = Some(img);
+                }
             }
 
-            let (numer, denom) = frames[i].delay().numer_denom_ms();
-            let delay = ((numer as f64 * 1000f64) / (denom as f64)) as u64;
-            let d = Duration::from_micros(delay);
+            let d = if frames.is_empty() {
+                Duration::from_secs(86400)
+            } else {
+                let (numer, denom) = frames[i].delay().numer_denom_ms();
+                let delay = ((numer as f64 * 1000f64) / (denom as f64)) as u64;
+                Duration::from_micros(delay)
+            };
             if let Some(msg) = self.try_read::<GifMessage>(&mut channel, d).await {
-                debug!("Got message '{:#?}'", msg);
+                debug!("Gif widget {} got message '{:#?}'", id, msg);
                 if let Ok(f) = self.load_gif(&msg.url).await {
                     frames = f;
                     i = 0;
                 }
             }
 
-            i = (i + 1) % frames.len();
+            i = if frames.is_empty() {
+                0
+            } else {
+                (i + 1) % frames.len()
+            }
         }
     }
 }

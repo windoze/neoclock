@@ -3,6 +3,7 @@ mod widgets;
 mod screen;
 
 pub use screen::Screen;
+use serde::Serializer;
 pub use widgets::message;
 pub use widgets::Widget;
 pub(crate) type PartPixel = image::Rgba<u8>;
@@ -85,6 +86,13 @@ where
         color.b as u8,
         (color.a * 255f32) as u8,
     ]))
+}
+
+pub(crate) fn serialize_pixel<S>(p: &PartPixel, ser: S) -> Result<S::Ok, S::Error>
+where S: Serializer 
+{
+    let s = format!("rgba({},{},{},{})", p.0[0], p.0[1], p.0[2], p.0[3] as f64 * 255.0);
+    ser.serialize_str(&s)
 }
 
 pub(crate) fn fill<P, Container>(image: &mut ImageBuffer<P, Container>, color: P)

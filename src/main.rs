@@ -1,9 +1,9 @@
 mod config;
 
 use anyhow::Result;
-use log::{info, warn};
+use log::{error, info, warn};
 use rpi_led_matrix::{LedCanvas, LedColor, LedMatrix, LedMatrixOptions};
-use rumqttc::{Event, Packet};
+use rumqttc::{Event, Outgoing, Packet};
 use std::{fs::File, io::BufReader, time::Duration};
 use structopt::StructOpt;
 
@@ -67,20 +67,30 @@ async fn main() -> Result<()> {
         loop {
             // NOTE:
             // receiver.poll() blocks for few seconds every time, we need to move it to another seperated task (or thread?)
-            let e = receiver.poll().await;
-            if let Ok(Event::Incoming(Packet::Publish(msg))) = e {
-                info!(
-                    "Got message: '{}({})'",
-                    &msg.topic,
-                    std::str::from_utf8(&msg.payload).unwrap()
-                );
-                if let Ok(m) = serde_json::from_slice::<renderer::message::NeoClockMessage>(&msg.payload) {
-                    sender.send(m).await.unwrap_or_default();
-                } else {
-                    warn!("Received invalid message.");
+            match receiver.poll().await {
+                // Ignore routine messages to avoid log flooding
+                Ok(Event::Incoming(Packet::PingResp)) => {}
+                Ok(Event::Outgoing(Outgoing::PingReq)) => {}
+                Ok(Event::Incoming(Packet::Publish(msg))) => {
+                    info!(
+                        "Got message: '{}({})'",
+                        &msg.topic,
+                        std::str::from_utf8(&msg.payload).unwrap()
+                    );
+                    if let Ok(m) =
+                        serde_json::from_slice::<renderer::message::NeoClockMessage>(&msg.payload)
+                    {
+                        sender.send(m).await.unwrap_or_default();
+                    } else {
+                        warn!("Received invalid message.");
+                    }
                 }
-            } else {
-                info!("Got unwanted message: '{:#?}'", e);
+                Ok(x) => {
+                    info!("Got unwanted message: '{:#?}'", x);
+                }
+                Err(e) => {
+                    error!("Connection error: '{:#?}'", e)
+                }
             }
         }
     });
