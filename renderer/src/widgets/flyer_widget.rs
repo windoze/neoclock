@@ -7,7 +7,7 @@ use serde::Deserialize;
 
 use super::{FontConfig, super::movers::{ScrollIterator, Scrollable}};
 use crate::{
-    deserialize_pixel, Part, PartCache, PartChannel, PartImage, PartPixel, RenderError,
+    deserialize_pixel, Part, PartCache, PartChannel, PartImage, PartPixel, RenderError, widgets::message::FlyerMessage,
 };
 
 #[derive(Clone, Debug, Deserialize)]
@@ -35,15 +35,6 @@ impl Default for FlyerWidget {
             speed: 100,
         }
     }
-}
-
-#[derive(Clone, Debug, Default, Deserialize)]
-struct FlyerMessage {
-    text: String,
-    ttl: u32,
-
-    #[serde(skip)]
-    expiration: Option<Instant>,
 }
 
 #[async_trait]

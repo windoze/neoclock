@@ -6,6 +6,7 @@ mod gif_widget;
 mod matrix_rain_widget;
 mod solid_widget;
 mod wigwag_widget;
+pub mod message;
 
 use crate::{Part, PartCache, PartChannel, RenderError};
 use async_trait::async_trait;

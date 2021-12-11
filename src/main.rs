@@ -1,8 +1,11 @@
+mod config;
+
 use anyhow::Result;
-use clap::{value_t, App, Arg};
-use log::info;
+use log::{info, warn};
 use rpi_led_matrix::{LedCanvas, LedColor, LedMatrix, LedMatrixOptions};
+use rumqttc::{Event, Packet};
 use std::{fs::File, io::BufReader, time::Duration};
+use structopt::StructOpt;
 
 use renderer::{Drawable, Screen, WidgetConf};
 
@@ -20,39 +23,7 @@ extern "C" {
     fn geteuid() -> u32;
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
-    pretty_env_logger::init();
-
-    let matches = App::new("neoclock")
-        .version("1.0")
-        .author("Chen Xu <windoze@0d0a.com>")
-        .about("LED Clock")
-        .arg(
-            Arg::with_name("config")
-                .short("c")
-                .long("config")
-                .value_name("FILE")
-                .help("Sets a custom config file")
-                .takes_value(true),
-        )
-        .arg(
-            Arg::with_name("refresh-rate")
-                .short("r")
-                .long("refresh-rate")
-                .value_name("FPS")
-                .help("Sets refresh rate")
-                .default_value("60")
-                .takes_value(true),
-        )
-        .get_matches();
-    let config = matches.value_of("config").unwrap_or("config.json");
-    let fps = value_t!(matches.value_of("refresh-rate"), u64)?;
-    info!("Using config file at '{}'.", config);
-    let file = File::open(config)?;
-    let reader = BufReader::new(file);
-    let parts: Vec<WidgetConf> = serde_json::from_reader(reader)?;
-
+fn init_matrix() -> Result<LedMatrix> {
     let mut options = LedMatrixOptions::new();
     options.set_hardware_mapping("adafruit-hat-pwm");
     options.set_hardware_pulsing(unsafe { geteuid() } == 0);
@@ -62,19 +33,61 @@ async fn main() -> Result<()> {
     options.set_cols(64);
     options.set_rows(64);
     options.set_refresh_rate(false);
-    let matrix = LedMatrix::new(Some(options), None).unwrap();
+    match LedMatrix::new(Some(options), None) {
+        Ok(matrix) => Ok(matrix),
+        Err(e) => {
+            panic!("LED Matrix initialization failed, error is '{}'.", e);
+        }
+    }
+}
 
-    let screen = Screen::new(64, 64, parts);
+#[tokio::main]
+async fn main() -> Result<()> {
+    pretty_env_logger::init();
+
+    let opt = config::Config::from_args();
+    let screen = match &opt.config {
+        Some(s) => {
+            info!("Using config file at '{}'.", s);
+            let file = File::open(s)?;
+            let reader = BufReader::new(file);
+            let parts: Vec<WidgetConf> = serde_json::from_reader(reader)?;
+            Screen::new(64, 64, parts)
+        }
+        None => Screen::default(),
+    };
+
+    let matrix = init_matrix()?;
     let mut canvas = Canvas(matrix.offscreen_canvas());
-    // let t = std::time::Instant::now() + Duration::from_secs(3);
-    // let mut sent = false;
+
+    let mut receiver = opt.get_receiver().await?;
+    let sender = screen.sender.clone();
+
+    tokio::spawn(async move {
+        loop {
+            // NOTE:
+            // receiver.poll() blocks for few seconds every time, we need to move it to another seperated task (or thread?)
+            let e = receiver.poll().await;
+            if let Ok(Event::Incoming(Packet::Publish(msg))) = e {
+                info!(
+                    "Got message: '{}({})'",
+                    &msg.topic,
+                    std::str::from_utf8(&msg.payload).unwrap()
+                );
+                if let Ok(m) = serde_json::from_slice::<renderer::message::NeoClockMessage>(&msg.payload) {
+                    sender.send(m).await.unwrap_or_default();
+                } else {
+                    warn!("Received invalid message.");
+                }
+            } else {
+                info!("Got unwanted message: '{:#?}'", e);
+            }
+        }
+    });
+
     loop {
         screen.render_to(&mut canvas);
         canvas = Canvas(matrix.swap(canvas.0));
-        tokio::time::sleep(Duration::from_millis(1000 / fps)).await;
-        // if !sent && std::time::Instant::now() > t {
-        //     sent = true;
-        //     screen.send_str(7, r#"{"text":"Hello","ttl":10}"#.to_string()).await.unwrap();
-        // }
+        tokio::time::sleep(Duration::from_millis(1000 / opt.fps)).await
     }
 }

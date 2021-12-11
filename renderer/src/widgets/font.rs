@@ -1,7 +1,7 @@
 use std::cmp::max;
 
 use bdf::Glyph;
-use image::ImageBuffer;
+use image::{ImageBuffer, Pixel};
 use rusttype::Scale;
 use serde::Deserialize;
 
@@ -144,12 +144,8 @@ fn draw_ttf_text(
                 let y = y as i32 + bb.min.y;
                 // There's still a possibility that the glyph clips the boundaries of the bitmap
                 if x >= 0 && x < width as i32 && y >= 0 && y < pixel_height as i32 {
-                    let x = x as u32;
-                    let y = y as u32;
-                    let px = img.get_pixel_mut(x, y);
-                    let mut color = color;
-                    color.0[3] = (v * 255f32) as u8;
-                    (*px) = color;
+                    let color = image::Rgba::<u8>([color.0[0], color.0[1], color.0[2], (v * 255f32) as u8]);
+                    img.get_pixel_mut(x as u32, y as u32).blend(&color);
                 }
             })
         }
@@ -195,7 +191,10 @@ fn draw_bdf_text(
                 // Scale pixel by scale_x and scale_y
                 for s_x in 0..scale_x {
                     for s_y in 0..scale_y {
-                        image.put_pixel((x + offset_x) * scale_x + s_x, y * scale_y + s_y, color);
+                        image.get_pixel_mut(
+                            (x + offset_x) * scale_x + s_x,
+                            y * scale_y + s_y
+                        ).blend(&color);
                     }
                 }
             }

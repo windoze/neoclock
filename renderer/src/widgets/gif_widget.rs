@@ -5,17 +5,12 @@ use image::{AnimationDecoder, Frame};
 use log::{debug, info};
 use serde::Deserialize;
 
-use crate::{Part, PartCache, PartChannel, RenderError};
+use crate::{Part, PartCache, PartChannel, RenderError, widgets::message::GifMessage};
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct GifWidget {
     // TODO:
-    url: String,
-}
-
-#[derive(Clone, Debug, Default, Deserialize)]
-struct GifMessage {
-    url: String,
+    pub url: String,
 }
 
 impl GifWidget {
