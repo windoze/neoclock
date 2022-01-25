@@ -32,27 +32,21 @@ impl Config {
     fn get_host(&self) -> String {
         match &self.host {
             Some(s) => s.to_owned(),
-            None => std::env::var("NEOCLOCK_HOSTNAME").unwrap_or_else(|_| {
-                panic!("Azure IoT Hub host name is not set.")
-            }),
+            None => std::env::var("NEOCLOCK_HOSTNAME").unwrap_or_default(),
         }
     }
 
     fn get_device_id(&self) -> String {
         match &self.device_id {
             Some(s) => s.to_owned(),
-            None => std::env::var("NEOCLOCK_DEVICE_ID").unwrap_or_else(|_| {
-                panic!("Device id is not set.")
-            }),
+            None => std::env::var("NEOCLOCK_DEVICE_ID").unwrap_or_default(),
         }
     }
 
     fn get_password(&self) -> String {
         match &self.password {
             Some(s) => s.to_owned(),
-            None => std::env::var("NEOCLOCK_PASSWORD").unwrap_or_else(|_| {
-                panic!("Access key is not set.")
-            }),
+            None => std::env::var("NEOCLOCK_PASSWORD").unwrap_or_default(),
         }
     }
 
