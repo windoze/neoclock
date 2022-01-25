@@ -32,14 +32,14 @@ impl Config {
     fn get_host(&self) -> String {
         match &self.host {
             Some(s) => s.to_owned(),
-            None => std::env::var("NEOCLOCK_HOSTNAME").unwrap_or_default(),
+            None => std::env::var("NEOCLOCK_HOSTNAME").unwrap_or_else(|_| "localhost".to_string()),
         }
     }
 
     fn get_device_id(&self) -> String {
         match &self.device_id {
             Some(s) => s.to_owned(),
-            None => std::env::var("NEOCLOCK_DEVICE_ID").unwrap_or_default(),
+            None => std::env::var("NEOCLOCK_DEVICE_ID").unwrap_or_else(|_| "neoclock".to_string()),
         }
     }
 
