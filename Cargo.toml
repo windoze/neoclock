@@ -19,9 +19,15 @@ pretty_env_logger = "0.4"
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["default", "serde_derive"] }
 serde_json = "1"
-clap = "2"
+clap = "3"
 structopt = "0.3"
 rumqttc = "0.10"
-rpi-led-matrix = "0.4"
-#rpi-led-matrix = { git = "https://github.com/windoze/rust-rpi-rgb-led-matrix.git", branch = "static-link" }
+rpi-led-matrix = { version = "0.4", optional = true }
+embedded-graphics = { version = "0.7.0", optional = true }
+embedded-graphics-simulator = { version = "0.3", optional = true }
 renderer = { path = "renderer" }
+
+[features]
+default = ["simulator"]
+rpi = ["rpi-led-matrix"]
+simulator = ["embedded-graphics", "embedded-graphics-simulator"]

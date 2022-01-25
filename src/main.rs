@@ -2,44 +2,31 @@ mod config;
 
 use anyhow::Result;
 use log::{error, info, warn};
-use rpi_led_matrix::{LedCanvas, LedColor, LedMatrix, LedMatrixOptions};
 use rumqttc::{Event, Outgoing, Packet};
 use std::{fs::File, io::BufReader, time::Duration};
 use structopt::StructOpt;
 
 use renderer::{Drawable, Screen, WidgetConf};
 
-struct Canvas(LedCanvas);
-
-impl Drawable for Canvas {
-    fn set_pixel(&mut self, x: u32, y: u32, red: u8, green: u8, blue: u8) {
-        self.0
-            .set(x as i32, y as i32, &LedColor { red, green, blue });
-    }
+trait Display
+where
+    Self: Sized,
+{
+    type Canvas: Drawable;
+    fn init() -> anyhow::Result<Self>;
+    fn get_canvas(&self) -> Self::Canvas;
+    fn swap(&mut self, canvas: Self::Canvas) -> anyhow::Result<Self::Canvas>;
 }
 
-#[link(name = "c")]
-extern "C" {
-    fn geteuid() -> u32;
-}
+#[cfg(feature = "rpi")]
+mod led_matrix;
+#[cfg(feature = "rpi")]
+use led_matrix::Matrix;
 
-fn init_matrix() -> Result<LedMatrix> {
-    let mut options = LedMatrixOptions::new();
-    options.set_hardware_mapping("adafruit-hat-pwm");
-    options.set_hardware_pulsing(unsafe { geteuid() } == 0);
-    // Why the default value is set to 1000?
-    options.set_pwm_lsb_nanoseconds(130);
-    options.set_pixel_mapper_config("Rotate:180");
-    options.set_cols(64);
-    options.set_rows(64);
-    options.set_refresh_rate(false);
-    match LedMatrix::new(Some(options), None) {
-        Ok(matrix) => Ok(matrix),
-        Err(e) => {
-            panic!("LED Matrix initialization failed, error is '{}'.", e);
-        }
-    }
-}
+#[cfg(all(feature = "simulator", not(feature = "rpi")))]
+mod simulator;
+#[cfg(all(feature = "simulator", not(feature = "rpi")))]
+use simulator::Matrix;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -57,13 +44,17 @@ async fn main() -> Result<()> {
         None => Screen::default(),
     };
 
-    let matrix = init_matrix()?;
-    let mut canvas = Canvas(matrix.offscreen_canvas());
+    let mut matrix = Matrix::init()?;
+    let mut canvas = matrix.get_canvas();
 
     let mut receiver = opt.get_receiver().await?;
     let sender = screen.sender.clone();
 
-    tokio::spawn(async move {
+    let rt = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()?;
+
+    rt.spawn(async move {
         loop {
             // NOTE:
             // receiver.poll() blocks for few seconds every time, we need to move it to another seperated task (or thread?)
@@ -97,7 +88,14 @@ async fn main() -> Result<()> {
 
     loop {
         screen.render_to(&mut canvas);
-        canvas = Canvas(matrix.swap(canvas.0));
+        canvas = match matrix.swap(canvas) {
+            Ok(c) => c,
+            Err(_) => {
+                rt.shutdown_background();
+                break;
+            }
+        };
         tokio::time::sleep(Duration::from_millis(1000 / opt.fps)).await
     }
+    Ok(())
 }
