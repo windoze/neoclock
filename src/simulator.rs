@@ -3,12 +3,7 @@ use embedded_graphics_simulator::{
     OutputSettingsBuilder, SimulatorDisplay, Window, SimulatorEvent,
 };
 
-use crate::Display;
-
-#[derive(Clone, Debug, thiserror::Error)]
-#[error("{0}")]
-pub struct StringError(pub String);
-
+use crate::{Display, StringError};
 
 pub struct Canvas(SimulatorDisplay<Rgb888>);
 

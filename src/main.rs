@@ -8,6 +8,10 @@ use structopt::StructOpt;
 
 use renderer::{Drawable, Screen, WidgetConf};
 
+#[derive(Clone, Debug, thiserror::Error)]
+#[error("{0}")]
+pub struct StringError(pub String);
+
 trait Display
 where
     Self: Sized,
@@ -80,7 +84,8 @@ async fn main() -> Result<()> {
                     info!("Got unwanted message: '{:#?}'", x);
                 }
                 Err(e) => {
-                    error!("Connection error: '{:#?}'", e)
+                    error!("Connection error: '{:#?}'", e);
+                    tokio::time::sleep(Duration::from_secs(5)).await;
                 }
             }
         }

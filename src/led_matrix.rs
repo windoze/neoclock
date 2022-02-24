@@ -1,5 +1,7 @@
 use rpi_led_matrix::{LedCanvas, LedColor, LedMatrix, LedMatrixOptions};
 
+use crate::StringError;
+
 pub struct Canvas(LedCanvas);
 
 impl renderer::Drawable for Canvas {
@@ -27,7 +29,7 @@ impl crate::Display for Matrix {
         match LedMatrix::new(Some(options), None) {
             Ok(matrix) => Ok(Matrix(matrix)),
             Err(e) => {
-                panic!("LED Matrix initialization failed, error is '{}'.", e);
+                Err(StringError(format!("LED Matrix initialization failed, error is '{}'.", e)).into)
             }
         }
     }
