@@ -62,3 +62,11 @@ TODO:
 - [ ] More widgets.
 - [ ] Text layout.
 - [ ] And many other things.
+
+Licenses and Copyrights:
+------------------------
+
+* The source code of this project is licensed under [WTFPL](http://www.wtfpl.net/).
+* The default font 'DejaVu Sans Mono' is licensed under [DejaVu Fonts License](https://dejavu-fonts.github.io/License.html).
+* The robot animation is created by [Austin Lutz](https://lutzam2.artstation.com/), and published under [ArtStation Service Agreement](https://www.artstation.com/marketplace-product-eula).
+* Any other materials, if not specified, are copyrighted under various licenses, all rights reserved.
