@@ -30,6 +30,7 @@ docker run \
 --env CXX=/usr/local/musl/bin/armv7-unknown-linux-musleabihf-c++ \
 --env AR=/usr/local/musl/bin/armv7-unknown-linux-musleabihf-ar \
 -v "$HOME/.cargo":/root/.cargo \
+-v /root/.cargo/bin \
 -v "$(pwd)":/home/rust/src messense/rust-musl-cross:armv7-musleabihf \
 cargo build --release --features rpi --no-default-features
 ```
