@@ -68,7 +68,7 @@ impl Part for CalendarWidget {
             let img = font.draw_text(&date_str, self.text_color, self.background_color);
 
             if let Ok(mut write_guard) = cache.write() {
-                (*write_guard).image = Some(img);
+                write_guard.image = Some(img);
             }
             if let Some(s) = self.sleep(&mut channel).await {
                 // TODO: Received a message

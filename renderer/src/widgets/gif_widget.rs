@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{time::Duration, path::PathBuf};
 
 use async_trait::async_trait;
 use image::{AnimationDecoder, Frame};
@@ -10,18 +10,24 @@ use crate::{Part, PartCache, PartChannel, RenderError, widgets::message::GifMess
 #[derive(Clone, Debug, Deserialize)]
 pub struct GifWidget {
     // TODO:
-    pub url: String,
+    pub location: String,
 }
 
 impl GifWidget {
     async fn load_gif(&self, url: &str) -> Result<Vec<Frame>, RenderError> {
-        info!("GifWidget - Loading GIF from '{}'...", self.url);
-        let bytes = reqwest::Client::default()
+        info!("GifWidget - Loading GIF from '{}'...", self.location);
+        let bytes = if self.location.starts_with("http://") || self.location.starts_with("https://") {
+            // Read from URL
+            reqwest::Client::default()
             .get(url)
             .send()
             .await?
             .bytes()
-            .await?;
+            .await?
+        } else {
+            // Read from file
+            tokio::fs::read(PathBuf::from(url)).await?.into()
+        };
 
         let frames = image::codecs::gif::GifDecoder::new(bytes.as_ref())?
             .into_frames()
@@ -41,14 +47,14 @@ impl Part for GifWidget {
         mut channel: PartChannel,
     ) -> Result<(), crate::RenderError> {
         info!("GifWidget({}) started.", id);
-        let mut frames = self.load_gif(&self.url).await.unwrap_or_default();
+        let mut frames = self.load_gif(&self.location).await.unwrap_or_default();
         let mut i = 0;
         loop {
             if !frames.is_empty() {
                 let img = frames[i].buffer().clone();
 
                 if let Ok(mut write_guard) = cache.write() {
-                    (*write_guard).image = Some(img);
+                    write_guard.image = Some(img);
                 }
             }
 

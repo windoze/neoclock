@@ -112,106 +112,6 @@ impl Screen {
         }
     }
 
-    pub fn default() -> Screen {
-        let parts = vec![
-            WidgetConf {
-                x: 0,
-                y: 0,
-                visible: Some(true),
-                widget: Widget::Solid(SolidWidget {
-                    width: DEFAULT_WIDTH,
-                    height: DEFAULT_HEIGHT,
-                    color: TRANSPARENT,
-                }),
-            },
-            WidgetConf {
-                x: 0,
-                y: 0,
-                visible: Some(true),
-                widget: Widget::Gif(GifWidget {
-                    url: Default::default(),
-                }),
-            },
-            WidgetConf {
-                x: DEFAULT_WIDTH / 2,
-                y: 0,
-                visible: Some(true),
-                widget: Widget::Gif(GifWidget {
-                    url: Default::default(),
-                }),
-            },
-            WidgetConf {
-                x: 0,
-                y: DEFAULT_HEIGHT / 2,
-                visible: Some(true),
-                widget: Widget::Gif(GifWidget {
-                    url: Default::default(),
-                }),
-            },
-            WidgetConf {
-                x: DEFAULT_WIDTH / 2,
-                y: DEFAULT_HEIGHT / 2,
-                visible: Some(true),
-                widget: Widget::Gif(GifWidget {
-                    url: Default::default(),
-                }),
-            },
-            WidgetConf {
-                x: 0,
-                y: 0,
-                visible: Some(true),
-                widget: Widget::Clock(ClockWidget {
-                    width:DEFAULT_WIDTH,
-                    height:DEFAULT_HEIGHT/2,
-                    text_color: HALF_WHITE,
-                    background_color: TRANSPARENT,
-                    font_config: FontConfig {
-                        font_path: Default::default(),
-                        font_height: 20.5,
-                        font_scale_x: 1.2,
-                        font_scale_y: 1.0
-                    }
-                }),
-            },
-            WidgetConf {
-                x: 0,
-                y: DEFAULT_HEIGHT - 12,
-                visible: Some(true),
-                widget: Widget::Calendar(CalendarWidget {
-                    width:DEFAULT_WIDTH,
-                    height:DEFAULT_HEIGHT/2,
-                    text_color: HALF_WHITE,
-                    background_color: TRANSPARENT,
-                    font_config: FontConfig {
-                        font_path: Default::default(),
-                        font_height: 12.4,
-                        font_scale_x: 1.0,
-                        font_scale_y: 1.0
-                    }
-                }),
-            },
-            WidgetConf {
-                x: 0,
-                y: 0,
-                visible: Some(true),
-                widget: Widget::Flyer(FlyerWidget {
-                    width:DEFAULT_WIDTH,
-                    height:DEFAULT_HEIGHT,
-                    text_color: HALF_WHITE,
-                    background_color: HALF_YELLOW,
-                    speed: 100,
-                    font_config: FontConfig {
-                        font_path: Default::default(),
-                        font_height: 12.4,
-                        font_scale_x: 1.0,
-                        font_scale_y: 1.0
-                    }
-                }),
-            },
-        ];
-        Self::new(DEFAULT_WIDTH, DEFAULT_HEIGHT, parts)
-    }
-
     pub async fn stop(&mut self) {
         for c in self.parts.iter_mut() {
             c.join_handler.abort();
@@ -269,6 +169,108 @@ impl Screen {
         T: Serialize,
     {
         self.send_str(idx, serde_json::to_string(t)?).await
+    }
+}
+
+impl Default for Screen {
+    fn default() -> Screen {
+        let parts = vec![
+            WidgetConf {
+                x: 0,
+                y: 0,
+                visible: Some(true),
+                widget: Widget::Solid(SolidWidget {
+                    width: DEFAULT_WIDTH,
+                    height: DEFAULT_HEIGHT,
+                    color: TRANSPARENT,
+                }),
+            },
+            WidgetConf {
+                x: 0,
+                y: 0,
+                visible: Some(true),
+                widget: Widget::Gif(GifWidget {
+                    location: "./robot.gif".to_string(),
+                }),
+            },
+            WidgetConf {
+                x: DEFAULT_WIDTH / 2,
+                y: 0,
+                visible: Some(true),
+                widget: Widget::Gif(GifWidget {
+                    location: Default::default(),
+                }),
+            },
+            WidgetConf {
+                x: 0,
+                y: DEFAULT_HEIGHT / 2,
+                visible: Some(true),
+                widget: Widget::Gif(GifWidget {
+                    location: Default::default(),
+                }),
+            },
+            WidgetConf {
+                x: DEFAULT_WIDTH / 2,
+                y: DEFAULT_HEIGHT / 2,
+                visible: Some(true),
+                widget: Widget::Gif(GifWidget {
+                    location: Default::default(),
+                }),
+            },
+            WidgetConf {
+                x: 0,
+                y: 0,
+                visible: Some(true),
+                widget: Widget::Clock(ClockWidget {
+                    width:DEFAULT_WIDTH,
+                    height:DEFAULT_HEIGHT/2,
+                    text_color: HALF_WHITE,
+                    background_color: TRANSPARENT,
+                    font_config: FontConfig {
+                        font_path: Default::default(),
+                        font_height: 20.5,
+                        font_scale_x: 1.2,
+                        font_scale_y: 1.0
+                    }
+                }),
+            },
+            WidgetConf {
+                x: 0,
+                y: DEFAULT_HEIGHT - 12,
+                visible: Some(true),
+                widget: Widget::Calendar(CalendarWidget {
+                    width:DEFAULT_WIDTH,
+                    height:DEFAULT_HEIGHT/2,
+                    text_color: HALF_WHITE,
+                    background_color: TRANSPARENT,
+                    font_config: FontConfig {
+                        font_path: Default::default(),
+                        font_height: 12.4,
+                        font_scale_x: 1.0,
+                        font_scale_y: 1.0
+                    }
+                }),
+            },
+            WidgetConf {
+                x: 0,
+                y: 0,
+                visible: Some(true),
+                widget: Widget::Flyer(FlyerWidget {
+                    width:DEFAULT_WIDTH,
+                    height:DEFAULT_HEIGHT,
+                    text_color: HALF_WHITE,
+                    background_color: HALF_YELLOW,
+                    speed: 100,
+                    font_config: FontConfig {
+                        font_path: Default::default(),
+                        font_height: 12.4,
+                        font_scale_x: 1.0,
+                        font_scale_y: 1.0
+                    }
+                }),
+            },
+        ];
+        Self::new(DEFAULT_WIDTH, DEFAULT_HEIGHT, parts)
     }
 }
 

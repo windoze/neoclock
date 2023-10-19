@@ -29,7 +29,7 @@ impl crate::Display for Matrix {
         match LedMatrix::new(Some(options), None) {
             Ok(matrix) => Ok(Matrix(matrix)),
             Err(e) => {
-                Err(StringError(format!("LED Matrix initialization failed, error is '{}'.", e)).into)
+                Err(StringError(format!("LED Matrix initialization failed, error is '{}'.", e)).into())
             }
         }
     }

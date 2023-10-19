@@ -40,9 +40,9 @@ Run
 Before running the program, several preparations need to be done:
 - First, you need a stable 5V power supply which can provide at least 4A current, 10A is preferred, LED panels consume large current, especially when mose LEDs are lit up. Each pixel can draw up to 0.06 Amps each if on full white, do you own math.
 - To use 64 rows panel, you need to solder a jumper on Adafruit RGB Matrix Bonnet. <img src="https://cdn-learn.adafruit.com/assets/assets/000/063/007/medium640/led_matrices_addr-e-pad-bonnet.jpg?1538677462" />
-- (Optional) Then you need to solder a jump between GPIO4 and GPIO8 on the bonnet to use the hardware PWM.<img src="https://cdn-learn.adafruit.com/assets/assets/000/057/727/medium640/led_matrices_gpios.jpg?1531951340" />
-Otherwise the graphics on the LED panel may flicker or distort.
-- If you've done the steps above, you also need to switch off on-board sound (dtparam=audio=off in /boot/config.txt). You can still use external USB sound adaptors to play audios.
+- (Optional) Then you need to solder a jump between GPIO4 and GPIO8 on the bonnet to use the hardware PWM.<br><img src="https://cdn-learn.adafruit.com/assets/assets/000/057/727/medium640/led_matrices_gpios.jpg?1531951340" />
+<br>Otherwise the graphics on the LED panel may flicker or distort.
+- If you've done the steps above, you also need to switch off on-board sound (`dtparam=audio=off` in `/boot/config`.txt) and blacklist `snd_bcm2835` module. You can still use external USB sound adaptors to play audios.
 - You need to set up a MQTT server somewhere that the RPi can connect to, and set following 3 environment variables:
     + `NEOCLOCK_HOSTNAME`, the MQTT server host name.
     + `NEOCLOCK_DEVICE_ID`, the MQTT device id for NeoClock.

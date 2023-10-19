@@ -29,7 +29,7 @@ impl Part for SolidWidget {
             let mut img = PartImage::new(self.width, self.height);
             fill(&mut img, self.color);
             if let Ok(mut write_guard) = cache.write() {
-                (*write_guard).image = Some(img);
+                write_guard.image = Some(img);
             }
 
             if let Some(msg) = self

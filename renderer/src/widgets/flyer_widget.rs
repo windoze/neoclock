@@ -77,7 +77,7 @@ impl Part for FlyerWidget {
                 Some(image)
             };
             if let Ok(mut write_guard) = cache.write() {
-                (*write_guard).image = img;
+                write_guard.image = img;
             }
 
             let d = Duration::from_millis((1000 / self.speed) as u64);

@@ -81,9 +81,9 @@ where
         .parse::<css_color_parser::Color>()
         .map_err(|e| D::Error::custom(e.to_string()))?;
     Ok(image::Rgba::<u8>([
-        color.r as u8,
-        color.g as u8,
-        color.b as u8,
+        color.r,
+        color.g,
+        color.b,
         (color.a * 255f32) as u8,
     ]))
 }
