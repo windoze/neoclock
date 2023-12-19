@@ -140,7 +140,7 @@ mod tests {
     fn solid_image(width: u32, height: u32, color: &PartPixel) -> PartImage {
         let mut img = PartImage::new(width, height);
         for p in img.pixels_mut() {
-            (*p).0 = color.0;
+            p.0 = color.0;
         }
         img
     }
