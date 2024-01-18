@@ -5,7 +5,7 @@ use std::ops::{Deref, DerefMut};
 
 use image::{GenericImageView, ImageBuffer, Pixel};
 pub use scroll::{ScrollIterator, Scrollable};
-pub use wigwag::{WigwagIterator, Wigwagable};
+pub use wigwag::Wigwagable;
 
 pub fn blit<Src, P, Container>(
     src: &Src,

@@ -15,7 +15,7 @@ use serde::Deserialize;
 pub use calendar_widget::CalendarWidget;
 pub use clock_widget::ClockWidget;
 pub use flyer_widget::FlyerWidget;
-pub use font::{Font, FontConfig};
+pub use font::FontConfig;
 pub use gif_widget::GifWidget;
 pub use matrix_rain_widget::MatrixRainWidget;
 pub use solid_widget::SolidWidget;
