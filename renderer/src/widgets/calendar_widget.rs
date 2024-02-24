@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use chrono::{DateTime, Datelike, Duration, Local, NaiveDate, TimeZone, Utc};
+use chrono::{Datelike, Duration, NaiveDate, TimeZone, Timelike, Utc};
 use image::Rgba;
 use log::{debug, info};
 use serde::Deserialize;
@@ -24,14 +24,12 @@ pub struct CalendarWidget {
 
 impl CalendarWidget {
     async fn sleep(&self, channel: &mut PartChannel) -> Option<String> {
-        // Sleep until the beginning of the next hour
-        // TODO: Is there any better way to do that?
+        // Sleep until the beginning of the next minute
         let now = Utc::now();
-        let n = NaiveDate::from_ymd(now.year(), now.month(), now.day()).and_hms(0, 0, 1);
-        let next_hour = Local.from_local_datetime(&(n + Duration::hours(1))).unwrap();
-        let nt: DateTime<Utc> = DateTime::from(next_hour);
-        let d = nt - now;
-        match timeout(d.to_std().unwrap(), channel.recv()).await {
+        let n = NaiveDate::from_ymd(now.year(), now.month(), now.day()).and_hms(now.hour(), now.minute(), 0);
+        let next_min = Utc.from_utc_datetime(&(n + Duration::minutes(1)));
+        let d = next_min - now;
+        match timeout(d.to_std().unwrap_or_default(), channel.recv()).await {
             Ok(v) => v,
             Err(_) => None,
         }
