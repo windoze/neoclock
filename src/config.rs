@@ -51,8 +51,18 @@ impl Config {
     }
 
     pub async fn get_receiver(&self) -> anyhow::Result<EventLoop> {
-        let mut mqttoptions = MqttOptions::new(self.get_device_id(), self.get_host(), if self.use_tls { 8883 } else { 1883 });
-        mqttoptions.set_keep_alive(Duration::from_secs(5));
+        let host = self.get_host();
+        let mut mqttoptions = if host.contains(':') {
+            let parts: Vec<&str> = host.split(':').collect();
+            let host = parts[0];
+            let port = parts[1].parse::<u16>()?;
+            MqttOptions::new(self.get_device_id(), host, port)
+        } else {
+            MqttOptions::new(self.get_device_id(), self.get_host(), if self.use_tls { 8883 } else { 1883 })
+        };        mqttoptions.set_keep_alive(Duration::from_secs(5));
+        if self.use_tls {
+            mqttoptions.set_transport(rumqttc::Transport::tls_with_config(rumqttc::TlsConfiguration::default()));
+        }
 
         if !self.get_password().is_empty() {
             mqttoptions.set_credentials(self.get_device_id(), self.get_password());
