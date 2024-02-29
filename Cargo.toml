@@ -21,7 +21,7 @@ serde = { version = "1", features = ["default", "serde_derive"] }
 serde_json = "1"
 clap = "4"
 structopt = "0.3"
-rumqttc = "0.23"
+rumqttc = "0.24"
 rpi-led-matrix = { version = "0.4", optional = true }
 embedded-graphics = { version = "0.8", optional = true }
 embedded-graphics-simulator = { version = "0.6", optional = true }
@@ -31,3 +31,6 @@ renderer = { path = "renderer" }
 default = ["simulator"]
 rpi = ["rpi-led-matrix"]
 simulator = ["embedded-graphics", "embedded-graphics-simulator"]
+
+[profile.release]
+strip = true

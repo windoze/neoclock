@@ -26,7 +26,9 @@ impl CalendarWidget {
     async fn sleep(&self, channel: &mut PartChannel) -> Option<String> {
         // Sleep until the beginning of the next minute
         let now = Utc::now();
-        let n = NaiveDate::from_ymd(now.year(), now.month(), now.day()).and_hms(now.hour(), now.minute(), 0);
+        let n = NaiveDate::from_ymd_opt(now.year(), now.month(), now.day())
+            .and_then(|nd| nd.and_hms_opt(now.hour(), now.minute(), 0))
+            .unwrap();
         let next_min = Utc.from_utc_datetime(&(n + Duration::minutes(1)));
         let d = next_min - now;
         match timeout(d.to_std().unwrap_or_default(), channel.recv()).await {

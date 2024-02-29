@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 use image::Rgba;
 use log::{debug, info};
 use serde::Deserialize;
@@ -28,8 +28,8 @@ impl ClockWidget {
         // TODO: Is there any better way to do that?
         let now = Utc::now();
         let ts = now.timestamp() + 1 /*sec*/;
-        let ns = NaiveDateTime::from_timestamp(ts, 0);
-        let nt: DateTime<Utc> = DateTime::from_utc(ns, Utc);
+        let ns = NaiveDateTime::from_timestamp_opt(ts, 0).unwrap();
+        let nt: DateTime<Utc> = Utc.from_utc_datetime(&ns);
         let d = nt - now;
         match timeout(d.to_std().unwrap(), channel.recv()).await {
             Ok(v) => v,
